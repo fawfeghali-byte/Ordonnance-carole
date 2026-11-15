@@ -32,7 +32,7 @@ const fields = [
 });
 fields.push(f('amountLetters', 'Montant en lettres', 56.5, 154, 49, { h: 5 }));
 
-export const DEFAULT_SCAN = 'assets/formulaire.jpg';
+export const DEFAULT_SCAN = 'assets/formulaire.svg';
 
 export const DEFAULT_LAYOUT = {
   page: { w: 151, h: 182 }, // mesuré à la règle : 15,1 × 18,2 cm
@@ -47,7 +47,7 @@ export const DEFAULT_SETTINGS = {
   fontSize: 10,
   minFontSize: 7.5,
   autoLockMin: 10,
-  scanOpacity: 0.85,
+  scanOpacity: 1,
 };
 
 // Champs propres au patient : jamais enregistrés dans un modèle depuis une ordonnance en cours.

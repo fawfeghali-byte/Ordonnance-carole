@@ -41,14 +41,12 @@ The interface is in French. No build step, no dependencies: plain HTML/CSS/JS.
 4. In the browser's print dialog, once: margins **None**, scale **100 %**,
    **Headers and footers off**, paper size = the form.
 
-> The default positions in `js/defaults.js` were read off the scan in
-> `assets/formulaire.jpg`, for the measured page size of 151 × 182 mm.
-> The scan is a phone photo, so expect a few millimetres of error until a test
-> print has been checked against a form.
->
-> `assets/formulaire.jpg` shows the doctor's stamp and one form's serial number,
-> and is publicly downloadable from wherever the app is hosted. Replace it with a
-> blank scan if that matters.
+> The preview background is `assets/formulaire.svg`, a clean redrawing of the form
+> (regenerate it with `python3 scripts/build-form-svg.py`). It is never printed, and
+> the serial number, seal, fiscal stamp and doctor's stamp are left as empty
+> placeholders. Positions were taken from a phone photo of a 151 × 182 mm form, so
+> expect a few millimetres of error until a test print has been checked against a
+> real form.
 
 ## Security
 
@@ -105,7 +103,7 @@ Commit and redeploy, then click *Médicaments › Actualiser la liste* in the ap
 | `index.html`, `css/app.css` | Page, styles, print rules |
 | `config.js` | Sync settings |
 | `js/defaults.js` | Default field positions (mm) and print settings |
-| `assets/formulaire.jpg` | Scan of the form, preview background only (never printed) |
+| `assets/formulaire.svg`, `scripts/build-form-svg.py` | Redrawn form used as preview background (never printed) |
 | `js/form.js` | Renders the form for preview, calibration and print |
 | `js/editor.js` | Ordonnance / preset editor |
 | `js/views.js` | Login, presets, history, drugs, settings, calibration |
