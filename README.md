@@ -34,7 +34,7 @@ The interface is in French. No build step, no dependencies: plain HTML/CSS/JS.
 
 1. Open the app and choose *Créer mon accès* (e-mail + password, 10+ characters).
 2. *Réglages › Calibration*:
-   - enter the form's real width and height in mm (measured with a ruler);
+   - the page size is preset to 151 × 182 mm; change it if your forms differ;
    - check each box against the scan and drag it if needed, then *Enregistrer*.
 3. *Imprimer un test* on plain paper, hold it against a real form in front of a
    window, and use the global offset arrows until it lines up.
@@ -42,9 +42,9 @@ The interface is in French. No build step, no dependencies: plain HTML/CSS/JS.
    **Headers and footers off**, paper size = the form.
 
 > The default positions in `js/defaults.js` were read off the scan in
-> `assets/formulaire.jpg`, assuming a 170 × 210 mm page (the scan's proportions).
-> The scan is a phone photo, so expect a few millimetres of error until the real
-> page size is entered and a test print has been checked against a form.
+> `assets/formulaire.jpg`, for the measured page size of 151 × 182 mm.
+> The scan is a phone photo, so expect a few millimetres of error until a test
+> print has been checked against a form.
 >
 > `assets/formulaire.jpg` shows the doctor's stamp and one form's serial number,
 > and is publicly downloadable from wherever the app is hosted. Replace it with a
