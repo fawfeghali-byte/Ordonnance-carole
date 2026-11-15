@@ -1,6 +1,6 @@
 // Stockage local chiffré (IndexedDB) + synchronisation chiffrée de bout en bout (Supabase, facultatif).
 import { deriveKeys, importKey, exportKey, encryptJSON, decryptJSON } from './crypto.js';
-import { DEFAULT_LAYOUT, DEFAULT_SETTINGS } from './defaults.js';
+import { DEFAULT_LAYOUT, DEFAULT_SETTINGS, DEFAULT_SCAN } from './defaults.js';
 
 const DB_NAME = 'ordonnance-app';
 const SESSION_KEY = 'ordonnance-unlock';
@@ -239,7 +239,8 @@ export const settings = () => ({ ...DEFAULT_SETTINGS, ...(get('settings')?.data 
 export const saveSettings = (patch) => put('settings', { ...settings(), ...patch }, 'settings');
 export const layout = () => structuredClone(get('layout')?.data || DEFAULT_LAYOUT);
 export const saveLayout = (l) => put('layout', l, 'layout');
-export const scan = () => get('scan')?.data?.image || null;
+export const scan = () => get('scan')?.data?.image || DEFAULT_SCAN;
+export const hasCustomScan = () => !!get('scan')?.data?.image;
 
 // ---------- Supabase (REST, sans bibliothèque) ----------
 async function http(method, path, body, token) {

@@ -34,16 +34,21 @@ The interface is in French. No build step, no dependencies: plain HTML/CSS/JS.
 
 1. Open the app and choose *Créer mon accès* (e-mail + password, 10+ characters).
 2. *Réglages › Calibration*:
-   - enter the form's width and height in mm (measured with a ruler);
-   - load the scan (JPG/PNG, cropped exactly to the paper's edges);
-   - drag each box onto its place, then *Enregistrer*.
+   - enter the form's real width and height in mm (measured with a ruler);
+   - check each box against the scan and drag it if needed, then *Enregistrer*.
 3. *Imprimer un test* on plain paper, hold it against a real form in front of a
    window, and use the global offset arrows until it lines up.
 4. In the browser's print dialog, once: margins **None**, scale **100 %**,
    **Headers and footers off**, paper size = the form.
 
-> The field positions shipped in `js/defaults.js` are placeholders (A5 landscape,
-> 210 × 148 mm). They must be calibrated against a real form before use.
+> The default positions in `js/defaults.js` were read off the scan in
+> `assets/formulaire.jpg`, assuming a 170 × 210 mm page (the scan's proportions).
+> The scan is a phone photo, so expect a few millimetres of error until the real
+> page size is entered and a test print has been checked against a form.
+>
+> `assets/formulaire.jpg` shows the doctor's stamp and one form's serial number,
+> and is publicly downloadable from wherever the app is hosted. Replace it with a
+> blank scan if that matters.
 
 ## Security
 
@@ -100,6 +105,7 @@ Commit and redeploy, then click *Médicaments › Actualiser la liste* in the ap
 | `index.html`, `css/app.css` | Page, styles, print rules |
 | `config.js` | Sync settings |
 | `js/defaults.js` | Default field positions (mm) and print settings |
+| `assets/formulaire.jpg` | Scan of the form, preview background only (never printed) |
 | `js/form.js` | Renders the form for preview, calibration and print |
 | `js/editor.js` | Ordonnance / preset editor |
 | `js/views.js` | Login, presets, history, drugs, settings, calibration |

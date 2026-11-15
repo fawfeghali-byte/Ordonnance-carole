@@ -104,7 +104,13 @@ export function createEditor(opts) {
   }
 
   function fieldsSection() {
-    const fields = store.layout().fields.filter((f) => f.kind === 'text' && f.on !== false);
+    // Une saisie par valeur : les trois cases d'une date (jour, mois, année) partagent le même champ.
+    const seen = new Set();
+    const fields = store
+      .layout()
+      .fields.filter((f) => f.kind === 'text' && f.on !== false)
+      .map((f) => ({ id: f.from || f.id, label: f.from ? f.fromLabel || f.label : f.label }))
+      .filter((f) => !seen.has(f.id) && seen.add(f.id));
     if (mode === 'preset')
       return h('section', { class: 'card' }, h('h3', null, 'Champs pré-remplis'), h('p', { class: 'hint' }, 'Laissez vide ce qui change à chaque patient. La date du jour est ajoutée automatiquement.'), h('div', { class: 'grid' }, fields.filter((f) => f.id !== 'date').map(valueInput)));
     const quick = QUICK_FIELDS.map((id) => fields.find((f) => f.id === id)).filter(Boolean);
@@ -330,7 +336,7 @@ export function createEditor(opts) {
           medRows
         )
       ),
-      h('div', { class: 'ed-preview' }, h('div', { class: 'preview-sticky' }, pageTabs, previewHost, warnings, h('p', { class: 'hint' }, store.scan() ? 'Aperçu : le fond du formulaire n’est pas imprimé, seul le texte l’est.' : 'Aperçu sans fond : ajoutez le scan du formulaire dans Réglages › Calibration.')))
+      h('div', { class: 'ed-preview' }, h('div', { class: 'preview-sticky' }, pageTabs, previewHost, warnings, h('p', { class: 'hint' }, 'Aperçu : le fond du formulaire n’est pas imprimé, seul le texte l’est.')))
     )
   );
   refresh();

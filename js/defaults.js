@@ -3,30 +3,39 @@
 
 const f = (id, label, x, y, w, extra = {}) => ({ id, label, kind: 'text', x, y, w, h: 6, size: 0, align: 'left', on: true, ...extra });
 
+// Positions relevées sur le scan du formulaire (photo 1684 × 2081), en supposant une page de
+// 170 × 210 mm. À confirmer avec les dimensions mesurées, puis à affiner dans la calibration.
+const dateParts = (from, fromLabel, xs, y, w) =>
+  ['jour', 'mois', 'année'].map((p, i) =>
+    f(`${from}-${i}`, `${fromLabel} – ${p}`, xs[i], y, w, { from, fromLabel, part: i, align: 'center', h: 5.5 })
+  );
+
 const fields = [
-  f('patientName', 'Nom et prénom du patient', 80, 22, 76),
-  f('birthDate', 'Date de naissance', 160, 22, 42),
-  f('insurance', "L'assurance", 80, 30, 76),
-  f('date', 'Date', 160, 30, 42),
-  f('diseaseCode', 'Code de la maladie', 80, 38, 36),
-  f('workStop', "Durée d'arrêt de travail", 120, 38, 38),
-  f('treatmentDuration', 'Durée estimée du traitement', 162, 38, 40),
-  f('actNature', "Nature de l'acte médical", 80, 46, 46),
-  f('consultFee', 'Frais de consultation', 130, 46, 34),
-  f('transportFee', 'Frais de transport', 168, 46, 34),
-  f('treatmentsDone', 'Traitements effectués par le médecin', 80, 54, 46),
-  f('ordonnanceCount', 'Ordonnance médicale Nbre', 130, 54, 34),
-  f('priorAgreement', 'Une entente préalable', 168, 54, 34),
+  f('patientName', 'Nom et prénom du patient', 89, 33.5, 55),
+  ...dateParts('birthDate', 'Date de naissance', [98.5, 110.5, 121.5], 40.5, 11),
+  f('insurance', "L'assurance", 13, 49, 48),
+  ...dateParts('date', 'Date', [24.8, 32.8, 40.8], 59.5, 7.6),
+  f('diseaseCode', 'Code de la maladie', 13, 69, 48),
+  f('workStop', "Durée d'arrêt de travail", 64, 53.5, 48, { h: 5.5 }),
+  f('treatmentDuration', 'Durée estimée du traitement', 115, 53.5, 46, { h: 5.5 }),
+  f('actNature', "Nature de l'acte médical", 76, 66, 28, { h: 5.5 }),
+  f('consultFee', 'Frais de consultation', 76, 72, 28, { h: 5.5 }),
+  f('transportFee', 'Frais de transport', 76, 78, 28, { h: 5.5 }),
+  f('treatmentsDone', 'Traitements effectués par le médecin', 133, 66, 13.5, { h: 5.5 }),
+  f('ordonnanceCount', 'Ordonnance médicale Nbre', 127, 72, 25, { h: 5.5 }),
+  f('priorAgreement', 'Une entente préalable', 125, 78, 30, { h: 5.5 }),
 ];
-for (let i = 1; i <= 7; i++) {
-  const y = 58 + i * 8;
-  fields.push(f('ns' + i, 'NS ' + i, 80, y, 4, { kind: 'ns', align: 'center' }));
-  fields.push(f('med' + i, 'Médicament ' + i, 86, y, 116, { kind: 'med' }));
-}
-fields.push(f('amountLetters', 'Montant en lettres', 80, 126, 122));
+// 7 lignes de prescription : case NS à gauche, texte sur deux lignes possibles.
+[90.8, 101.5, 113.2, 125, 136.5, 148.3, 160].forEach((top, i) => {
+  fields.push(f('ns' + (i + 1), 'NS ' + (i + 1), 66.5, top + 0.5, 9.5, { kind: 'ns', align: 'center', h: 10, size: 14 }));
+  fields.push(f('med' + (i + 1), 'Médicament ' + (i + 1), 78, top + 1, 84, { kind: 'med', h: 9.5, wrap: true }));
+});
+fields.push(f('amountLetters', 'Montant en lettres', 64, 176.5, 55, { h: 6 }));
+
+export const DEFAULT_SCAN = 'assets/formulaire.jpg';
 
 export const DEFAULT_LAYOUT = {
-  page: { w: 210, h: 148 }, // à remplacer par les dimensions mesurées du formulaire
+  page: { w: 170, h: 210 }, // estimation d'après les proportions du scan — à remplacer par la mesure réelle
   offset: { dx: 0, dy: 0 }, // décalage global (calibration de l'imprimante)
   fields,
 };

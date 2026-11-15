@@ -446,8 +446,8 @@ export function calibrationView(nav) {
       h('section', { class: 'card' },
         h('h3', null, '2. Scan du formulaire (fond de l’aperçu)'),
         h('p', { class: 'hint' }, 'Image JPG/PNG recadrée exactement aux bords du papier. Elle sert de repère à l’écran et n’est jamais imprimée.'),
-        h('div', { class: 'toolbar' }, h('button', { type: 'button', class: 'btn', onclick: () => scanFile.click() }, store.scan() ? 'Remplacer le scan…' : 'Choisir le scan…'), store.scan() ? h('button', { type: 'button', class: 'btn', onclick: async () => { await store.remove('scan'); paintPreview(); paintPanel(); } }, 'Retirer') : null, scanFile),
-        store.scan() ? h('label', { class: 'field' }, h('span', null, 'Opacité du fond'), h('input', { type: 'range', min: 0.1, max: 1, step: 0.05, value: s.scanOpacity, onchange: async (e) => { await store.saveSettings({ scanOpacity: +e.target.value }); paintPreview(); } })) : null
+        h('div', { class: 'toolbar' }, h('button', { type: 'button', class: 'btn', onclick: () => scanFile.click() }, 'Remplacer le scan…'), store.hasCustomScan() ? h('button', { type: 'button', class: 'btn', onclick: async () => { await store.remove('scan'); paintPreview(); paintPanel(); } }, 'Revenir au scan d’origine') : null, scanFile),
+        true ? h('label', { class: 'field' }, h('span', null, 'Opacité du fond'), h('input', { type: 'range', min: 0.1, max: 1, step: 0.05, value: s.scanOpacity, onchange: async (e) => { await store.saveSettings({ scanOpacity: +e.target.value }); paintPreview(); } })) : null
       ),
       h('section', { class: 'card' },
         h('h3', null, '3. Décalage global de l’imprimante'),
@@ -468,6 +468,7 @@ export function calibrationView(nav) {
           h('div', { class: 'grid two' }, num(f, 'x', { label: 'X – depuis la gauche (mm)' }), num(f, 'y', { label: 'Y – depuis le haut (mm)' }), num(f, 'w', { label: 'Largeur (mm)', min: 2 }), num(f, 'h', { label: 'Hauteur (mm)', min: 2 }), num(f, 'size', { label: 'Taille texte (pt, 0 = standard)', min: 0 }),
             h('label', { class: 'field' }, h('span', null, 'Alignement'), h('select', { class: 'input', onchange: (e) => ((f.align = e.target.value), changed()) }, [['left', 'Gauche'], ['center', 'Centre'], ['right', 'Droite']].map(([v, l]) => h('option', { value: v, selected: f.align === v }, l))))),
           h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: f.on !== false, onchange: (e) => ((f.on = e.target.checked), changed(), paintPanel()) }), ' Champ utilisé (décochez pour le masquer)'),
+          f.kind !== 'ns' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: !!f.wrap, onchange: (e) => ((f.wrap = e.target.checked), changed()) }), ' Texte sur plusieurs lignes si la case est assez haute') : null,
           f.custom ? h('button', { type: 'button', class: 'btn small danger', onclick: () => { layout.fields = layout.fields.filter((x) => x !== f); selected = null; changed(); paintPanel(); } }, 'Supprimer ce champ') : null,
         ] : null,
         h('div', { class: 'toolbar' },

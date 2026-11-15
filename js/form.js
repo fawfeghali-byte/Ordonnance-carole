@@ -14,8 +14,17 @@ export function textWidthMm(text, pt, family, bold) {
 export function fit(text, field, settings) {
   let size = field.size || settings.fontSize;
   const min = Math.min(size, settings.minFontSize);
-  while (size > min && textWidthMm(text, size, settings.fontFamily) > field.w) size = Math.max(min, size - 0.25);
-  return { size, overflow: textWidthMm(text, size, settings.fontFamily) > field.w + 0.05 };
+  // Champ sur plusieurs lignes : capacité = largeur × nombre de lignes qui tiennent dans la hauteur.
+  const room = (pt) => (field.wrap ? field.w * Math.max(1, Math.floor(field.h / (pt * 0.3528 * 1.15))) * 0.9 : field.w);
+  const width = (pt) => textWidthMm(text, pt, settings.fontFamily);
+  while (size > min && width(size) > room(size)) size = Math.max(min, size - 0.25);
+  return { size, overflow: width(size) > room(size) + 0.05 };
+}
+
+// Valeur d'un champ texte. Un champ « partie de date » (from + part) n'imprime que le jour, le mois ou l'année.
+export function fieldValue(f, values) {
+  const v = (values[f.from || f.id] || '').trim();
+  return f.from && f.part != null ? v.split(/[\/.\-\s]+/)[f.part] || '' : v;
 }
 
 const num = (id) => parseInt(id.replace(/\D/g, ''), 10) || 0;
@@ -58,7 +67,7 @@ export function renderPage(layout, settings, page, opts = {}) {
     let text = '';
     if (f.kind === 'med') text = page.meds[medSlots.indexOf(f)]?.text || '';
     else if (f.kind === 'ns') text = page.meds[nsSlots.indexOf(f)]?.ns ? 'X' : '';
-    else text = (page.values[f.id] || '').trim();
+    else text = fieldValue(f, page.values);
     let sample = false;
     if (!text && opts.sample) {
       text = f.kind === 'ns' ? 'X' : f.label;
@@ -69,7 +78,7 @@ export function renderPage(layout, settings, page, opts = {}) {
     const box = h(
       'div',
       {
-        class: `f f-${f.kind}${r.overflow && !sample ? ' over' : ''}${sample ? ' sample' : ''}`,
+        class: `f f-${f.kind}${f.wrap ? ' f-wrap' : ''}${r.overflow && !sample ? ' over' : ''}${sample ? ' sample' : ''}`,
         'data-id': f.id,
         style: {
           left: f.x + dx + 'mm',

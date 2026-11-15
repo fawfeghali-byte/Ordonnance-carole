@@ -154,6 +154,7 @@ main { padding: 16px; max-width: 1500px; margin: 0 auto; }
 .page .scan { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
 .page .f { position: absolute; display: flex; align-items: flex-end; white-space: nowrap; line-height: 1.15; color: #000; }
 .page .f span { unicode-bidi: plaintext; }
+.page .f-wrap { white-space: normal; overflow-wrap: anywhere; align-items: flex-start; }
 .page .f-ns { font-weight: 700; align-items: center; }
 .page .f.over { background: rgba(220, 38, 38, 0.18); outline: 0.3mm solid #dc2626; }
 .page .f.sample { color: #8a94a0; }
