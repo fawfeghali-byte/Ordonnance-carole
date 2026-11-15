@@ -8,7 +8,7 @@ The app never reprints the form. It prints **only the doctor's text**, positione
 in millimetres so it lands in the boxes of the blank, serial-numbered official
 form fed into the printer. The pharmacist/laboratory section is never touched.
 
-The interface is in French. No build step, no dependencies: plain HTML/CSS/JS.
+The interface is in French or English. No build step, no dependencies: plain HTML/CSS/JS.
 
 ## What it does
 
@@ -70,20 +70,30 @@ python3 -m http.server 8000      # then open http://localhost:8000
 Without sync configured, the app runs in local mode: data stays encrypted on that
 one device.
 
-## Sync across computer, tablet and phone (optional, free)
+## Sync across devices, for one doctor only
 
-Sync uses a [Supabase](https://supabase.com) project as an encrypted mailbox.
+Sync uses a free [Supabase](https://supabase.com) project as an encrypted mailbox.
 
 1. Create a Supabase project (EU region recommended).
-2. *SQL Editor* → paste `supabase/schema.sql` → *Run*.
-3. *Project Settings › API*: copy the **Project URL** and the **anon / publishable
-   key** into `config.js`, then redeploy. (Or paste them per device in
-   *Réglages › Synchronisation*.)
-4. Open the app and create the access. If Supabase asks to confirm the e-mail,
-   click the link received, then *Synchroniser*.
-5. In Supabase *Authentication › Sign In / Providers*, **turn off "Allow new users
-   to sign up"** so nobody else can create an account.
-6. On the other devices, open the app and sign in with the same e-mail and password.
+2. *SQL Editor* → paste all of `supabase/schema.sql` → *Run*. This creates the
+   sync table and a lock that refuses any sign-up once one account exists.
+3. *Authentication › Sign In / Providers › Email*: turn **Confirm email** off
+   (simplest), or leave it on and click the link received at step 5.
+4. *Project Settings › API*: copy the **Project URL** and the **anon / publishable
+   key** into `config.js`, commit, and let the host redeploy.
+5. Open the app, choose *Créer mon accès* and create the doctor's account.
+6. Close the door:
+   - Supabase *Authentication › Sign In / Providers*: turn **Allow new users to
+     sign up** off;
+   - in `config.js`, set `allowNewAccount: false` so the "create access" link
+     disappears from the login page.
+7. On the other devices, open the app and sign in with the same e-mail and password.
+
+After step 6 nobody else can create an account, and without the doctor's password
+nobody can read anything: the server only holds encrypted data.
+
+The interface language (Français / English) is switched from the login page or the
+top bar and is remembered per device.
 
 If you self-host Supabase on another domain, add it to `connect-src` in the
 `Content-Security-Policy` tag of `index.html`.
@@ -108,5 +118,6 @@ Commit and redeploy, then click *Médicaments › Actualiser la liste* in the ap
 | `js/editor.js` | Ordonnance / preset editor |
 | `js/views.js` | Login, presets, history, drugs, settings, calibration |
 | `js/store.js`, `js/crypto.js` | Encrypted storage and sync |
+| `js/i18n.js` | English translations of the French interface |
 | `js/drugs.js`, `data/drugs-moph.json` | Autocomplete and the Ministry list |
 | `supabase/schema.sql` | Sync table with row-level security |

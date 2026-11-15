@@ -286,6 +286,8 @@ async function remoteSignup(e, pw) {
   if (r.ok) return null; // e-mail de confirmation envoyé
   const msg = JSON.stringify(r.json || '').toLowerCase();
   if (msg.includes('already')) throw new AppError('Un compte existe déjà avec cet e-mail : mot de passe incorrect.');
+  if (msg.includes('database error') || msg.includes('single doctor'))
+    throw new AppError('La création de compte est fermée : cette application est réservée à un seul médecin.');
   if (msg.includes('signup') && msg.includes('disabled'))
     throw new AppError('La création de compte est désactivée sur le serveur de synchronisation.');
   throw new AppError('Création du compte de synchronisation impossible (' + r.status + ').');

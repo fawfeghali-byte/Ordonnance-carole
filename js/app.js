@@ -2,7 +2,8 @@ import { h, toast } from './util.js';
 import * as store from './store.js';
 import { loadDrugs } from './drugs.js';
 import { createEditor } from './editor.js';
-import { loginView, presetsView, historyView, drugsView, settingsView, calibrationView } from './views.js';
+import { t } from './i18n.js';
+import { langSwitch, loginView, presetsView, historyView, drugsView, settingsView, calibrationView } from './views.js';
 
 const app = document.getElementById('app');
 const TABS = [
@@ -13,6 +14,8 @@ const TABS = [
 ];
 let tab = 'presets';
 let editor = null; // écran de saisie en cours (conservé quand on change d'onglet)
+let editorOpts = null;
+const langEl = h('div');
 let current = null;
 const main = h('main');
 const tabsEl = h('nav', { class: 'tabs' });
@@ -24,12 +27,22 @@ const nav = {
     render();
   },
   openEditor(opts) {
-    editor = createEditor({ ...opts, onBack: () => ((editor = null), nav.go('presets')) });
+    editorOpts = { ...opts, onBack: () => ((editor = null), nav.go('presets')) };
+    editor = createEditor(editorOpts);
     nav.go('presets');
   },
 };
 
+// Changement de langue : tout est reconstruit ; l'ordonnance en cours est conservée.
+function relabel() {
+  if (editor) editor = createEditor({ ...editorOpts, preset: editorOpts.preset && (store.get(editorOpts.preset.id) || editorOpts.preset) });
+  paintStatus(store.getStatus());
+  render();
+}
+
 function render() {
+  langEl.replaceChildren(langSwitch(relabel));
+  lockBtn.textContent = t('🔒 Verrouiller');
   tabsEl.replaceChildren(
     ...TABS.map(([id, label]) =>
       h('button', { type: 'button', class: 'tab' + (id === tab || (id === 'settings' && tab === 'calibration') ? ' on' : ''), onclick: () => nav.go(id) }, label)
@@ -44,9 +57,11 @@ function render() {
   scrollTo(0, 0);
 }
 
+const lockBtn = h('button', { type: 'button', class: 'btn small', onclick: () => lock() }, '🔒 Verrouiller');
+
 function shell() {
   app.replaceChildren(
-    h('header', { class: 'top' }, h('div', { class: 'brand' }, h('span', { class: 'logo sm' }, '℞'), 'Ordonnance'), tabsEl, h('div', { class: 'spacer' }), statusEl, h('button', { type: 'button', class: 'btn small', onclick: lock }, '🔒 Verrouiller')),
+    h('header', { class: 'top' }, h('div', { class: 'brand' }, h('span', { class: 'logo sm' }, '℞'), document.createTextNode('Ordonnance')), tabsEl, h('div', { class: 'spacer' }), statusEl, langEl, lockBtn),
     main
   );
   tab = 'presets';
@@ -82,14 +97,15 @@ function armIdle() {
 }
 for (const ev of ['pointerdown', 'keydown', 'input', 'scroll']) addEventListener(ev, armIdle, { passive: true, capture: true });
 
-store.onStatus((s) => {
+function paintStatus(s) {
   const map = { off: ['', ''], syncing: ['Synchronisation…', 'busy'], ok: ['✔ Synchronisé', 'ok'], error: ['⚠ Non synchronisé', 'err'] };
   const [label, cls] = map[s.state] || map.off;
-  statusEl.textContent = label;
+  statusEl.textContent = t(label);
   statusEl.className = 'status ' + cls;
   statusEl.hidden = !label;
-  statusEl.title = s.message || 'Synchroniser maintenant';
-});
+  statusEl.title = t(s.message || 'Synchroniser maintenant');
+}
+store.onStatus(paintStatus);
 
 // Données reçues d'un autre appareil : rafraîchir la liste affichée (sans perturber une saisie en cours).
 store.onChange(() => {

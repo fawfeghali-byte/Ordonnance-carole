@@ -1,6 +1,7 @@
 // Écrans : connexion, modèles, historique, médicaments, réglages, calibration.
 import { h, norm, toast, dialog, confirmBox, promptBox, download, fmtDateTime } from './util.js';
 import * as store from './store.js';
+import { t, getLang, setLang } from './i18n.js';
 import { renderPage, scaled, printPages, medText } from './form.js';
 import { loadDrugs, info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
 import { emptyDoc, emptyMed, docFromPreset, folderSelect } from './editor.js';
@@ -9,7 +10,7 @@ import { DEFAULT_LAYOUT, FONT_CHOICES } from './defaults.js';
 const busy = async (btn, fn) => {
   const label = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Un instant…';
+  btn.textContent = t('Un instant…');
   try {
     await fn();
   } catch (e) {
@@ -20,10 +21,15 @@ const busy = async (btn, fn) => {
   }
 };
 
+// Bascule Français / English
+export const langSwitch = (onChange) =>
+  h('div', { class: 'lang' }, ['fr', 'en'].map((l) => h('button', { type: 'button', class: 'lang-btn' + (getLang() === l ? ' on' : ''), 'aria-pressed': String(getLang() === l), onclick: () => { if (getLang() !== l) { setLang(l); onChange(); } } }, l === 'fr' ? 'Français' : 'English')));
+
 // ======================= Connexion =======================
 export async function loginView(onUnlocked) {
   const account = await store.localAccount();
   const cfg = store.syncConfig();
+  const closed = cfg.enabled && window.ORDONNANCE_CONFIG?.allowNewAccount === false; // un seul médecin : plus de création
   let mode = account || cfg.enabled ? 'login' : 'create';
   const root = h('div', { class: 'login' });
 
@@ -45,6 +51,7 @@ export async function loginView(onUnlocked) {
           });
         },
       },
+      langSwitch(paint),
       h('div', { class: 'logo' }, '℞'),
       h('h1', null, 'Ordonnance'),
       h('p', { class: 'hint center' }, mode === 'create' ? 'Première utilisation : choisissez votre e-mail et un mot de passe.' : 'Accès réservé au médecin.'),
@@ -55,7 +62,9 @@ export async function loginView(onUnlocked) {
         ? h('div', { class: 'note warn' }, 'Ce mot de passe chiffre toutes les données. Personne ne peut le récupérer s’il est oublié : notez-le en lieu sûr et faites des sauvegardes régulières (Réglages › Sauvegarde).')
         : null,
       submit,
-      !account
+      !account && closed
+        ? null
+        : !account
         ? h('button', { type: 'button', class: 'link', onclick: () => ((mode = mode === 'create' ? 'login' : 'create'), paint()) }, mode === 'create' ? 'J’ai déjà un accès : me connecter' : 'Première utilisation ? Créer mon accès')
         : h(
             'button',
@@ -222,7 +231,7 @@ export function drugsView() {
   const infoLine = h('p', { class: 'hint' });
   const paintInfo = () => {
     const i = drugInfo();
-    infoLine.textContent = i.count ? `${i.count.toLocaleString('fr-FR')} médicaments enregistrés au Liban — liste du ${i.updated.split('-').reverse().join('/')}. Source : ${i.source}.` : 'Liste non chargée.';
+    infoLine.textContent = t(i.count ? `${i.count.toLocaleString('fr-FR')} médicaments enregistrés au Liban — liste du ${i.updated.split('-').reverse().join('/')}. Source : ${i.source}.` : 'Liste non chargée.');
   };
 
   async function editMine(rec) {

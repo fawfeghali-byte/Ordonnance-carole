@@ -1,7 +1,12 @@
+import { t, getLang } from './i18n.js';
+
+const TRANSLATED_PROPS = new Set(['placeholder', 'title', 'aria-label']);
+
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(props || {})) {
+  for (let [k, v] of Object.entries(props || {})) {
     if (v == null || v === false) continue;
+    if (TRANSLATED_PROPS.has(k)) v = t(v);
     if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
@@ -10,7 +15,7 @@ export function h(tag, props, ...kids) {
   }
   for (const c of kids.flat(Infinity)) {
     if (c == null || c === false) continue;
-    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+    el.append(c.nodeType ? c : document.createTextNode(t(String(c))));
   }
   return el;
 }
@@ -27,7 +32,7 @@ export const today = () => {
 };
 
 export const fmtDateTime = (ms) =>
-  new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  new Date(ms).toLocaleString(getLang() === 'en' ? 'en-GB' : 'fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 // Saisie rapide d'une date : 01021980 -> 01/02/1980
 export function dateMask(input) {

@@ -33,3 +33,17 @@ create policy "own rows" on public.records for all to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 grant select, insert, update, delete on public.records to authenticated;
+
+-- Un seul médecin : dès qu'un compte existe, toute nouvelle inscription est refusée par la base.
+create or replace function public.only_one_doctor() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if exists (select 1 from auth.users) then
+    raise exception 'Signups are closed: this app is for a single doctor.';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists only_one_doctor on auth.users;
+create trigger only_one_doctor before insert on auth.users
+  for each row execute function public.only_one_doctor();

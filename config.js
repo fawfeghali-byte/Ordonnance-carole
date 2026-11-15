@@ -5,4 +5,6 @@
 window.ORDONNANCE_CONFIG = {
   supabaseUrl: '',
   supabaseAnonKey: '',
+  // Une fois le compte du médecin créé, mettez false : le lien « Créer mon accès » disparaît.
+  allowNewAccount: true,
 };
