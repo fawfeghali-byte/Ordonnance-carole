@@ -27,6 +27,13 @@ export function fieldValue(f, values) {
   return f.from && f.part != null ? v.split(/[\/.\-\s]+/)[f.part] || '' : v;
 }
 
+// Sens d'écriture d'un texte : celui de sa première lettre (arabe/hébreu → droite à gauche).
+const STRONG = /[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]|([\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF])/;
+export function isRtl(text) {
+  const m = String(text || '').match(STRONG);
+  return !!(m && m[1]);
+}
+
 const num = (id) => parseInt(id.replace(/\D/g, ''), 10) || 0;
 export const slots = (layout, kind) =>
   layout.fields.filter((f) => f.kind === kind && f.on !== false).sort((a, b) => num(a.id) - num(b.id));
@@ -73,6 +80,7 @@ export function renderPage(layout, settings, page, opts = {}) {
       text = f.kind === 'ns' ? 'X' : f.label;
       sample = true;
     }
+    const rtl = f.kind !== 'ns' && isRtl(text);
     const r = f.kind === 'ns' ? { size: f.size || settings.fontSize, overflow: false } : fit(text, f, settings);
     if (r.overflow && !sample) overflows.push(f);
     const box = h(
@@ -86,10 +94,11 @@ export function renderPage(layout, settings, page, opts = {}) {
           width: f.w + 'mm',
           height: f.h + 'mm',
           fontSize: r.size + 'pt',
-          justifyContent: f.align === 'center' ? 'center' : f.align === 'right' ? 'flex-end' : 'flex-start',
+          // Texte arabe : il part du bord droit de la case et s'écrit de droite à gauche.
+          justifyContent: f.align === 'center' ? 'center' : (f.align === 'right') !== rtl ? 'flex-end' : 'flex-start',
         },
       },
-      h('span', { dir: 'auto' }, text)
+      h('span', { dir: rtl ? 'rtl' : 'ltr', style: f.wrap ? { width: '100%', textAlign: f.align === 'center' ? 'center' : (f.align === 'right') !== rtl ? 'right' : 'left' } : null }, text)
     );
     if (opts.guides) box.append(h('i', { class: 'guide-label' }, f.label));
     opts.onField?.(box, f);

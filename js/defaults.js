@@ -11,7 +11,7 @@ const dateParts = (from, fromLabel, xs, y, w) =>
   );
 
 const fields = [
-  f('patientName', 'Nom et prénom du patient', 78.5, 29.5, 49.0, { h: 5.0 }),
+  f('patientName', 'Nom et prénom du patient', 78.5, 29.5, 44.5, { h: 5.0 }), // s'arrête avant le libellé arabe
   ...dateParts('birthDate', 'Date de naissance', [87.0, 98.0, 107.5], 35.5, 10.0),
   f('insurance', "L'assurance", 10.5, 43.0, 43.0, { h: 5.0 }),
   ...dateParts('date', 'Date', [21.5, 28.5, 35.5], 52.0, 7.0),
