@@ -107,6 +107,12 @@ const EN = {
   '— Sans dossier —': '— No folder —',
 
   // Historique
+  '✔ Enregistrer': '✔ Save',
+  'Ordonnance mise à jour.': 'Prescription updated.',
+  'Met à jour cette ordonnance dans l’historique, sans l’imprimer': 'Updates this prescription in the history, without printing it',
+  'Quitter sans enregistrer les modifications de cette ordonnance ?': 'Leave without saving the changes to this prescription?',
+  'Corriger cette ordonnance (même date) : elle est mise à jour, pas dupliquée': 'Correct this prescription (same date): it is updated, not duplicated',
+  'modifiée le': 'edited on',
   Récents: 'Recent',
   Ouvrir: 'Open',
   Grille: 'Grid',

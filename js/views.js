@@ -304,7 +304,7 @@ export function historyView(nav) {
     doc.split = true;
     doc.meds = [...(doc.meds || []).filter((m) => medText(m)), emptyMed()];
     const who = r.data.patient || 'sans nom';
-    nav.openEditor({ mode: 'ordonnance', preset: null, presetName: r.data.presetName, doc, title: (renew ? 'Renouvellement — ' : 'Modification — ') + who, backTo: 'history', backLabel: '← Retour' });
+    nav.openEditor({ mode: 'ordonnance', preset: null, presetName: r.data.presetName, doc, title: (renew ? 'Renouvellement — ' : 'Modification — ') + who, backTo: 'history', backLabel: '← Retour', historyId: renew ? null : r.id });
   };
   const newFor = (p) => {
     nav.pendingPatient = patientValues(p);
@@ -495,7 +495,7 @@ export function historyView(nav) {
     return [
       bar([['Historique', () => go(null)], [p.name || t('(sans nom)'), () => go(p.key)], [fileName(r), null]], {
         actions: [
-          h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, false), title: 'Ouvrir cette ordonnance pour la corriger, puis l’imprimer' }, '✎ Modifier'),
+          h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, false), title: 'Corriger cette ordonnance (même date) : elle est mise à jour, pas dupliquée' }, '✎ Modifier'),
           h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, true), title: 'Même ordonnance, datée d’aujourd’hui' }, '↻ Renouveler'),
           h('button', { type: 'button', class: 'btn primary', onclick: () => reprint(r), title: 'Imprimer exactement la même ordonnance' }, '🖨 Ré-imprimer'),
         ],
@@ -526,7 +526,7 @@ export function historyView(nav) {
           h(
             'p',
             { class: 'hint' },
-            t('Imprimée le') + ' ' + fmtDateTime(r.data.at) + (r.data.presetName ? ' · ' + t('Modèle') + ' : ' + r.data.presetName : ''),
+            t('Imprimée le') + ' ' + fmtDateTime(r.data.at) + (r.data.editedAt ? ' · ' + t('modifiée le') + ' ' + fmtDateTime(r.data.editedAt) : '') + (r.data.presetName ? ' · ' + t('Modèle') + ' : ' + r.data.presetName : ''),
             ' · ',
             h('button', { type: 'button', class: 'link danger-text', onclick: () => delEntry(r) }, 'Supprimer de l’historique')
           )

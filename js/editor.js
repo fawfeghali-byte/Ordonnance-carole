@@ -320,20 +320,45 @@ export function createEditor(opts) {
           : `${pages.length} formulaires vont être imprimés. Placez ${pages.length} liasses dans l'imprimante.`;
       if (!(await confirmBox('Prêt à imprimer', text, 'Imprimer'))) return;
     }
-    await store.put('history', {
-      at: Date.now(),
-      patient: (doc.values.patientName || '').trim(),
-      date: doc.values.date || '',
-      presetName: preset?.data.name || opts.presetName || '',
-      doc: cleanDoc(doc, false),
-    });
+    if (opts.historyId) await saveHistoryEdit(); // modification : la même ordonnance, pas une nouvelle
+    else
+      await store.put('history', {
+        at: Date.now(),
+        patient: (doc.values.patientName || '').trim(),
+        date: doc.values.date || '',
+        presetName: preset?.data.name || opts.presetName || '',
+        doc: cleanDoc(doc, false),
+      });
     await printPages(layout, settings, pages, { copies });
+  }
+
+  // « Modifier » depuis l'historique : met à jour l'ordonnance existante au lieu d'en ajouter une.
+  async function saveHistoryEdit() {
+    const existing = store.get(opts.historyId);
+    await store.put(
+      'history',
+      {
+        ...(existing?.data || { at: Date.now(), presetName: opts.presetName || '' }),
+        patient: (doc.values.patientName || '').trim(),
+        date: doc.values.date || '',
+        doc: cleanDoc(doc, false),
+        editedAt: Date.now(),
+      },
+      opts.historyId
+    );
+    dirty = false;
+  }
+  async function saveEdit() {
+    await saveHistoryEdit();
+    toast('Ordonnance mise à jour.');
+    opts.onBack();
   }
 
   // ----- Mise en page -----
   const title = h('h2', { class: 'ed-title', dir: 'auto' }, opts.title || preset?.data.name || 'Ordonnance vierge');
   const back = async () => {
     if (mode === 'preset' && dirty && !(await confirmBox('Modifications non enregistrées', 'Quitter sans enregistrer ce modèle ?', 'Quitter', true))) return;
+    if (opts.historyId && dirty && !(await confirmBox('Modifications non enregistrées', 'Quitter sans enregistrer les modifications de cette ordonnance ?', 'Quitter', true))) return;
     opts.onBack();
   };
 
@@ -346,6 +371,7 @@ export function createEditor(opts) {
           h('button', { type: 'button', class: 'btn', onclick: back }, opts.backLabel || '← Modèles'),
           title,
           h('div', { class: 'spacer' }),
+          opts.historyId ? h('button', { type: 'button', class: 'btn', id: 'save-edit-btn', onclick: saveEdit, title: 'Met à jour cette ordonnance dans l’historique, sans l’imprimer' }, '✔ Enregistrer') : null,
           preset ? h('button', { type: 'button', class: 'btn', onclick: saveToPreset, title: 'Enregistre les médicaments et champs actuels dans le modèle (sans le nom du patient)' }, 'Enregistrer dans le modèle') : null,
           h('button', { type: 'button', class: 'btn', onclick: saveAsNew }, 'Nouveau modèle…'),
           h('button', { type: 'button', class: 'btn primary big', id: 'print-btn', onclick: print }, '🖨 Imprimer')
