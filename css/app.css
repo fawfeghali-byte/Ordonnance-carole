@@ -289,6 +289,10 @@ main > * { animation: rise var(--t-slow) var(--ease-out); }
 .fav:hover { color: var(--star); background: #fff8e6; transform: scale(1.12) rotate(-8deg); }
 .fav.on { color: var(--star); animation: pop 360ms var(--ease-spring); }
 @keyframes pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.menu-btn { font: inherit; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; background: transparent; cursor: pointer; color: var(--muted); flex: none; transition: background-color var(--t-fast), color var(--t-fast); -webkit-tap-highlight-color: transparent; }
+.menu-btn .i { width: 20px; height: 20px; }
+.menu-btn:hover, .menu-btn.open { background: var(--bg-2); color: var(--ink); }
+.menu-list.floating { position: fixed; right: auto; top: 0; z-index: 900; animation: menu-in 160ms var(--ease-out); }
 .menu { position: relative; }
 .menu > summary { list-style: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 9px; cursor: pointer; color: var(--muted); transition: background-color var(--t-fast), color var(--t-fast); }
 .menu > summary .i { width: 20px; height: 20px; }
@@ -503,4 +507,11 @@ main > * { animation: rise var(--t-slow) var(--ease-out); }
   #print-root .page .f { color: #000 !important; background: none !important; }
   #print-root .page:not(.guides) .f { outline: none !important; border: 0 !important; }
   #print-root .page.guides .f, #print-root .page.guides .f.sample { color: #7b8490 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* ---------- Écrans tactiles : pas d'effet de survol « collant » ---------- */
+@media (hover: none) {
+  .tile:hover, .pcard:hover, .row:hover, .btn:hover, .chip:hover, .icon:hover, .option:hover { transform: none; }
+  .file-tile:hover .thumb .page-wrap, .folder-tile:hover .ico.big { transform: none; }
+  .tile:active, .pcard:active { transform: scale(0.985); }
 }

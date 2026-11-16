@@ -1,5 +1,5 @@
 // Écrans : connexion, modèles, historique, médicaments, réglages, calibration.
-import { h, norm, today, toast, dialog, confirmBox, promptBox, download, fmtDateTime } from './util.js';
+import { h, norm, today, toast, dialog, confirmBox, promptBox, download, fmtDateTime, menuButton, closeMenu } from './util.js';
 import * as store from './store.js';
 import { t, getLang, setLang } from './i18n.js';
 import { logo, icon as svgIcon } from './icons.js';
@@ -157,22 +157,16 @@ export function presetsView(nav) {
 
   function card(p) {
     const meds = (p.data.doc.meds || []).map((m) => m.drug).filter(Boolean);
-    const menu = h('details', { class: 'menu' }, h('summary', { title: 'Autres actions', onclick: (e) => e.stopPropagation() }, '⋯'));
-    const item = (label, fn, cls = '') => h('button', { type: 'button', class: cls, onclick: (e) => (e.stopPropagation(), (menu.open = false), fn()) }, label);
-    menu.append(
-      h(
-        'div',
-        { class: 'menu-list' },
-        item('Modifier', () => edit(p)),
-        item('Renommer', async () => { const n = await promptBox('Renommer le modèle', 'Nom', p.data.name); if (n) patch(p, { name: n }); }),
-        item('Dupliquer', () => store.put('preset', { ...structuredClone(p.data), name: p.data.name + ' (copie)', favorite: false }).then(paint)),
-        item('Déplacer…', async () => {
-          const sel = folderSelect(p.data.folderId);
-          if (await dialog({ title: 'Déplacer le modèle', body: h('label', { class: 'field' }, h('span', null, 'Dossier'), sel), buttons: [{ label: 'Annuler', value: null }, { label: 'Déplacer', value: true, class: 'primary' }] })) patch(p, { folderId: sel.value });
-        }),
-        item('Supprimer', async () => { if (await confirmBox('Supprimer le modèle', `Supprimer définitivement « ${p.data.name} » ?`, 'Supprimer', true)) store.remove(p.id).then(paint); }, 'danger-text')
-      )
-    );
+    const menu = menuButton([
+      ['Modifier', () => edit(p)],
+      ['Renommer', async () => { const n = await promptBox('Renommer le modèle', 'Nom', p.data.name); if (n) patch(p, { name: n }); }],
+      ['Dupliquer', () => store.put('preset', { ...structuredClone(p.data), name: p.data.name + ' (copie)', favorite: false }).then(paint)],
+      ['Déplacer…', async () => {
+        const sel = folderSelect(p.data.folderId);
+        if (await dialog({ title: 'Déplacer le modèle', body: h('label', { class: 'field' }, h('span', null, 'Dossier'), sel), buttons: [{ label: 'Annuler', value: null }, { label: 'Déplacer', value: true, class: 'primary' }] })) patch(p, { folderId: sel.value });
+      }],
+      ['Supprimer', async () => { if (await confirmBox('Supprimer le modèle', `Supprimer définitivement « ${p.data.name} » ?`, 'Supprimer', true)) store.remove(p.id).then(paint); }, 'danger-text'],
+    ]);
     return h(
       'div',
       { class: 'pcard', tabIndex: 0, role: 'button', onclick: () => use(p), onkeydown: (e) => e.key === 'Enter' && e.target === e.currentTarget && use(p) },
@@ -283,17 +277,7 @@ function thumbnail(r) {
   return box;
 }
 
-function menu(items) {
-  const m = h('details', { class: 'menu', onclick: (e) => e.stopPropagation() }, h('summary', { title: 'Autres actions', 'aria-label': 'Autres actions' }, '⋯'));
-  m.append(
-    h(
-      'div',
-      { class: 'menu-list' },
-      items.filter(Boolean).map(([label, fn, cls]) => h('button', { type: 'button', class: cls || '', onclick: (e) => (e.stopPropagation(), (m.open = false), fn()) }, label))
-    )
-  );
-  return m;
-}
+const menu = (items) => menuButton(items);
 
 // Élément cliquable (dossier ou fichier), ouvrable au clavier.
 const item = (cls, open, ...kids) =>

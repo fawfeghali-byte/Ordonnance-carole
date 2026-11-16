@@ -108,21 +108,41 @@ export function renderPage(layout, settings, page, opts = {}) {
 }
 
 // Aperçu mis à l'échelle de son conteneur. Renvoie { el, scale() }.
+// Un seul écouteur pour tous les aperçus ; ceux qui ont quitté la page sont oubliés.
+const live = new Set();
+let rafPending = false;
+function applyAll() {
+  rafPending = false;
+  for (const a of live) if (!a()) live.delete(a);
+}
+addEventListener('resize', () => {
+  if (!rafPending) (rafPending = true), requestAnimationFrame(applyAll);
+});
+
 export function scaled(pageEl, layout) {
   const wrap = h('div', { class: 'page-wrap' }, pageEl);
   const wpx = layout.page.w * PX_PER_MM;
   const hpx = layout.page.h * PX_PER_MM;
   let s = 1;
+  let lastAvail = -1;
+  let born = Date.now();
   const apply = () => {
-    const avail = wrap.parentElement?.clientWidth || wpx;
+    if (!wrap.isConnected) return Date.now() - born < 2000; // pas encore inséré : on garde un instant
+    const avail = wrap.parentElement.clientWidth || wpx;
+    if (avail === lastAvail) return true;
+    lastAvail = avail;
     s = Math.min(avail / wpx, 2.2);
     pageEl.style.transform = `scale(${s})`;
     wrap.style.width = wpx * s + 'px';
     wrap.style.height = hpx * s + 'px';
+    return true;
   };
-  new ResizeObserver(apply).observe(document.body);
+  live.add(apply);
   queueMicrotask(apply);
-  requestAnimationFrame(apply);
+  requestAnimationFrame(() => {
+    born = 0;
+    apply();
+  });
   return { el: wrap, pxPerMm: () => s * PX_PER_MM, apply };
 }
 

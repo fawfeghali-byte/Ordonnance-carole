@@ -182,3 +182,60 @@ export function suggest(input, search, render, onPick) {
   });
   input.addEventListener('blur', close);
 }
+
+// Menu « ⋯ » flottant : affiché au-dessus de tout, près du bouton, et refermé au clic ailleurs.
+let openMenu = null;
+export function closeMenu() {
+  if (!openMenu) return;
+  const { el, btn, off } = openMenu;
+  openMenu = null;
+  off();
+  btn.setAttribute('aria-expanded', 'false');
+  btn.classList.remove('open');
+  el.remove();
+}
+export function menuButton(items, title = 'Autres actions') {
+  const btn = h('button', { type: 'button', class: 'menu-btn', title, 'aria-label': title, 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, '⋯');
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wasMine = openMenu?.btn === btn;
+    closeMenu();
+    if (wasMine) return;
+    const el = h(
+      'div',
+      { class: 'menu-list floating', role: 'menu' },
+      items.filter(Boolean).map(([text, fn, cls]) =>
+        h('button', { type: 'button', role: 'menuitem', class: cls || '', onclick: (ev) => (ev.stopPropagation(), closeMenu(), fn()) }, text)
+      )
+    );
+    document.body.append(el);
+    const r = btn.getBoundingClientRect();
+    const w = el.offsetWidth;
+    const hgt = el.offsetHeight;
+    const below = r.bottom + 6 + hgt <= innerHeight - 8;
+    el.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
+    el.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - 6 - hgt)) + 'px';
+    el.style.transformOrigin = below ? 'top right' : 'bottom right';
+    const onDoc = (ev) => !el.contains(ev.target) && closeMenu();
+    const onKey = (ev) => ev.key === 'Escape' && (closeMenu(), btn.focus());
+    const onMove = () => closeMenu();
+    setTimeout(() => document.addEventListener('pointerdown', onDoc, true));
+    document.addEventListener('keydown', onKey);
+    addEventListener('scroll', onMove, { passive: true, capture: true });
+    addEventListener('resize', onMove);
+    openMenu = {
+      el,
+      btn,
+      off: () => {
+        document.removeEventListener('pointerdown', onDoc, true);
+        document.removeEventListener('keydown', onKey);
+        removeEventListener('scroll', onMove, { capture: true });
+        removeEventListener('resize', onMove);
+      },
+    };
+    btn.setAttribute('aria-expanded', 'true');
+    btn.classList.add('open');
+    el.querySelector('button')?.focus({ preventScroll: true });
+  });
+  return btn;
+}

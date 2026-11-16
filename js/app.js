@@ -1,4 +1,4 @@
-import { h, toast, label as iconLabel } from './util.js';
+import { h, toast, label as iconLabel, closeMenu } from './util.js';
 import { logo, icon } from './icons.js';
 import * as store from './store.js';
 import { loadDrugs } from './drugs.js';
@@ -56,6 +56,7 @@ function relabel() {
 }
 
 function render() {
+  closeMenu();
   langEl.replaceChildren(langSwitch(relabel));
   lockBtn.replaceChildren(iconLabel('🔒 Verrouiller'));
   tabsEl.replaceChildren(
