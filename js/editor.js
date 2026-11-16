@@ -1,5 +1,5 @@
 // Écran de saisie d'une ordonnance (ou d'un modèle) avec aperçu en direct.
-import { h, norm, today, dateMask, toast, confirmBox, promptBox, dialog } from './util.js';
+import { h, today, dateMask, toast, confirmBox, promptBox, dialog } from './util.js';
 import { t } from './i18n.js';
 import * as store from './store.js';
 import { renderPage, scaled, splitPages, printPages, medText } from './form.js';
@@ -214,10 +214,7 @@ export function createEditor(opts) {
   }
 
   // ★ : ajoute le médicament à « Mes médicaments », ou l'en retire s'il y est déjà.
-  const findMyDrug = (m) => {
-    const key = norm(m.drug).trim();
-    return key ? store.all('mydrug').find((r) => norm(r.data.name).trim() === key) : null;
-  };
+  const findMyDrug = (m) => store.findMyDrug(m.drug);
   function paintStar(btn, m) {
     const on = !!findMyDrug(m);
     btn.classList.toggle('on', on);
@@ -228,7 +225,8 @@ export function createEditor(opts) {
     if (!m.drug.trim()) return toast('Saisissez d’abord le médicament.');
     const existing = findMyDrug(m);
     if (existing) {
-      for (const r of store.all('mydrug').filter((r) => norm(r.data.name).trim() === norm(m.drug).trim())) await store.remove(r.id);
+      await store.remove(existing.id);
+      await store.dedupeMyDrugs();
       toast('Retiré de « Mes médicaments ».');
     } else {
       await store.put('mydrug', { name: m.drug.trim(), strength: '', form: '', bg: m.bg || '', dose: m.dose, freq: m.freq, duration: m.duration });

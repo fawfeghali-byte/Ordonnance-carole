@@ -235,6 +235,37 @@ export async function remove(id) {
   scheduleSync();
 }
 
+// « Mes médicaments » : un médicament n'y figure qu'une fois (comparaison sans casse ni accents).
+const drugKey = (name) =>
+  String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+export const findMyDrug = (name, exceptId) => all('mydrug').find((r) => r.id !== exceptId && drugKey(r.data.name) === drugKey(name)) || null;
+
+// Supprime les doublons déjà présents (en gardant celui qui a une posologie, sinon le plus récent).
+export async function dedupeMyDrugs() {
+  const groups = new Map();
+  for (const r of all('mydrug')) {
+    const k = drugKey(r.data.name);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  let removed = 0;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const score = (r) => [r.data.dose, r.data.freq, r.data.duration].filter(Boolean).length;
+    list.sort((a, b) => score(b) - score(a) || b.updatedAt - a.updatedAt);
+    for (const r of list.slice(1)) {
+      await remove(r.id);
+      removed++;
+    }
+  }
+  return removed;
+}
+
 export const settings = () => ({ ...DEFAULT_SETTINGS, ...(get('settings')?.data || {}) });
 export const saveSettings = (patch) => put('settings', { ...settings(), ...patch }, 'settings');
 export const layout = () => structuredClone(get('layout')?.data || DEFAULT_LAYOUT);

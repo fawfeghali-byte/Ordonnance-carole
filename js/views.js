@@ -242,7 +242,12 @@ export function drugsView() {
     const ok = await dialog({
       title: rec ? 'Modifier le médicament' : 'Ajouter à mes médicaments',
       body: [h('label', { class: 'field' }, h('span', null, 'Médicament (nom, dosage, forme)'), f.name), h('label', { class: 'field' }, h('span', null, 'Type'), bg), h('p', { class: 'hint' }, 'Posologie habituelle (remplie automatiquement quand vous choisissez ce médicament) :'), h('div', { class: 'grid' }, h('label', { class: 'field' }, h('span', null, 'Dose'), f.dose), h('label', { class: 'field' }, h('span', null, 'Fréquence'), f.freq), h('label', { class: 'field' }, h('span', null, 'Durée'), f.duration))],
-      buttons: [{ label: 'Annuler', value: null }, { label: 'Enregistrer', class: 'primary', value: () => (f.name.value.trim() ? true : undefined) }],
+      buttons: [{ label: 'Annuler', value: null }, { label: 'Enregistrer', class: 'primary', value: () => {
+        const name = f.name.value.trim();
+        if (!name) return undefined;
+        if (store.findMyDrug(name, rec?.id)) return toast('Ce médicament est déjà dans « Mes médicaments ».', 'error'), undefined;
+        return true;
+      } }],
     });
     if (!ok) return;
     await store.put('mydrug', { name: f.name.value.trim(), strength: rec ? d.strength : '', form: rec ? d.form : '', bg: bg.value, dose: f.dose.value.trim(), freq: f.freq.value.trim(), duration: f.duration.value.trim() }, rec?.id);

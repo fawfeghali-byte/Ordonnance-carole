@@ -243,6 +243,7 @@ const EN = {
   'Saisissez d’abord le médicament.': 'Type the medication first.',
   'Ajouté à « Mes médicaments » avec sa posologie.': 'Added to “My medications” with its dosage.',
   'Retiré de « Mes médicaments ».': 'Removed from “My medications”.',
+  'Ce médicament est déjà dans « Mes médicaments ».': 'This medication is already in “My medications”.',
   'Retirer de mes médicaments': 'Remove from my medications',
   'Nouveau modèle': 'New template',
   'Nom du modèle': 'Template name',

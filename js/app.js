@@ -67,6 +67,7 @@ function shell() {
   tab = 'presets';
   editor = null;
   render();
+  store.dedupeMyDrugs();
   loadDrugs().catch(() => toast('Liste des médicaments indisponible (hors ligne ?). La saisie reste possible.', 'error'));
   armIdle();
 }
@@ -109,6 +110,7 @@ store.onStatus(paintStatus);
 
 // Données reçues d'un autre appareil : rafraîchir la liste affichée (sans perturber une saisie en cours).
 store.onChange(() => {
+  if (store.isUnlocked() && store.all('mydrug').length) store.dedupeMyDrugs();
   if (!store.isUnlocked() || !current?.repaint || document.querySelector('dialog[open]')) return;
   if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '')) return;
   current.repaint();
