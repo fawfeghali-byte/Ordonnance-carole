@@ -320,22 +320,23 @@ export function createEditor(opts) {
           : `${pages.length} formulaires vont être imprimés. Placez ${pages.length} liasses dans l'imprimante.`;
       if (!(await confirmBox('Prêt à imprimer', text, 'Imprimer'))) return;
     }
+    let savedId = opts.historyId;
     if (opts.historyId) await saveHistoryEdit(); // modification : la même ordonnance, pas une nouvelle
     else
-      await store.put('history', {
+      savedId = (await store.put('history', {
         at: Date.now(),
         patient: (doc.values.patientName || '').trim(),
         date: doc.values.date || '',
         presetName: preset?.data.name || opts.presetName || '',
         doc: cleanDoc(doc, false),
-      });
+      })).id;
     await printPages(layout, settings, pages, { copies });
     // Retour à l'accueil, avec confirmation que l'ordonnance est dans l'historique.
     const who = (doc.values.patientName || '').trim();
     const msg = opts.historyId
       ? who ? `✔ Ordonnance de ${who} mise à jour dans l’historique.` : '✔ Ordonnance mise à jour dans l’historique.'
       : who ? `✔ Ordonnance de ${who} enregistrée dans l’historique.` : '✔ Ordonnance enregistrée dans l’historique.';
-    opts.onPrinted?.(msg);
+    opts.onPrinted?.(msg, savedId);
   }
 
   // « Modifier » depuis l'historique : met à jour l'ordonnance existante au lieu d'en ajouter une.
@@ -356,8 +357,8 @@ export function createEditor(opts) {
   }
   async function saveEdit() {
     await saveHistoryEdit();
-    toast('Ordonnance mise à jour.');
-    opts.onBack();
+    const who = (doc.values.patientName || '').trim();
+    opts.onPrinted?.(who ? `✔ Ordonnance de ${who} mise à jour dans l’historique.` : '✔ Ordonnance mise à jour dans l’historique.', opts.historyId);
   }
 
   // ----- Mise en page -----

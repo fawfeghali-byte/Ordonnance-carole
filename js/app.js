@@ -4,7 +4,7 @@ import * as store from './store.js';
 import { loadDrugs } from './drugs.js';
 import { createEditor } from './editor.js';
 import { t } from './i18n.js';
-import { langSwitch, loginView, presetsView, historyView, resetHistory, drugsView, settingsView, calibrationView } from './views.js';
+import { langSwitch, loginView, presetsView, historyView, resetHistory, openPatientOf, drugsView, settingsView, calibrationView } from './views.js';
 
 const app = document.getElementById('app');
 const TABS = [
@@ -31,10 +31,14 @@ const nav = {
     editorOpts = {
       ...opts,
       onBack: () => ((editor = null), nav.go(opts.backTo || 'presets')),
-      onPrinted: (msg) => {
+      // Après impression : accueil ; depuis l'historique (renouveler / modifier) : dossier du patient.
+      onPrinted: (msg, recordId) => {
         editor = null;
-        resetHistory();
-        nav.go('presets');
+        if (opts.backTo === 'history' && openPatientOf(recordId)) nav.go('history');
+        else {
+          resetHistory();
+          nav.go('presets');
+        }
         toast(msg, 'success');
       },
     };

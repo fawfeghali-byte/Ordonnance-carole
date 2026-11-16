@@ -117,9 +117,10 @@ export function presetsView(nav) {
 
   const use = (p) => {
     const doc = docFromPreset(p);
-    if (nav.pendingPatient) Object.assign(doc.values, nav.pendingPatient);
+    const fromFolder = !!nav.pendingPatient; // lancée depuis le dossier d'un patient : on y revient ensuite
+    if (fromFolder) Object.assign(doc.values, nav.pendingPatient);
     nav.pendingPatient = null;
-    nav.openEditor({ mode: 'ordonnance', preset: p, doc });
+    nav.openEditor({ mode: 'ordonnance', preset: p, doc, ...(fromFolder ? { backTo: 'history', backLabel: '← Retour' } : {}) });
   };
   const edit = (p) => nav.openEditor({ mode: 'preset', preset: p, doc: p ? { values: {}, ...structuredClone(p.data.doc), meds: [...structuredClone(p.data.doc.meds || []), emptyMed()] } : emptyDoc() });
   const patch = (p, d) => store.put('preset', { ...p.data, ...d }, p.id).then(paint);
@@ -231,6 +232,13 @@ try {
   hv.view = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
 } catch {}
 export const resetHistory = () => Object.assign(hv, { patient: null, entry: null, q: '' });
+// Ouvre le dossier du patient auquel appartient cette ordonnance (après renouvellement ou modification).
+export function openPatientOf(recordId) {
+  const p = patients().find((x) => x.entries.some((r) => r.id === recordId));
+  if (!p) return false;
+  Object.assign(hv, { patient: p.key, entry: null, q: '' });
+  return true;
+}
 
 const ICONS = {
   folder: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.5 6.2A1.7 1.7 0 0 1 4.2 4.5h5.1l2.1 2.1h8.4a1.7 1.7 0 0 1 1.7 1.7v9.5a1.7 1.7 0 0 1-1.7 1.7H4.2a1.7 1.7 0 0 1-1.7-1.7z"/></svg>',
