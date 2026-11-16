@@ -102,7 +102,7 @@ function paintStatus(s) {
   const [label, cls] = map[s.state] || map.off;
   statusEl.textContent = t(label);
   statusEl.className = 'status ' + cls;
-  statusEl.hidden = !label;
+  statusEl.hidden = s.state !== 'error'; // visible uniquement en cas de problème
   statusEl.title = t(s.message || 'Synchroniser maintenant');
 }
 store.onStatus(paintStatus);
