@@ -295,10 +295,6 @@ export function settingsView(nav) {
       return i;
     };
     const font = h('select', { class: 'input', onchange: () => set({ fontFamily: font.value }) }, FONT_CHOICES.map(([v, l]) => h('option', { value: v, selected: s.fontFamily === v }, l)));
-    const cfg = store.syncConfig();
-    const st = store.getStatus();
-    const url = h('input', { class: 'input', type: 'url', value: cfg.url, placeholder: 'https://xxxx.supabase.co' });
-    const anon = h('input', { class: 'input', type: 'text', value: cfg.anon, placeholder: 'clé « anon / publishable »' });
     const includeHistory = h('input', { type: 'checkbox' });
     const file = h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: async () => {
       const f = file.files[0];
@@ -336,16 +332,6 @@ export function settingsView(nav) {
           try { await store.changePassword(f[0].value, f[1].value); toast('Mot de passe changé.'); } catch (e) { toast(e instanceof store.AppError ? e.message : 'Erreur : ' + e.message, 'error'); }
         } }, 'Changer le mot de passe'),
         h('p', { class: 'hint' }, `Connecté : ${store.currentEmail()}. Les données sont chiffrées (AES-256) avec votre mot de passe, sur cet appareil comme sur le serveur de synchronisation.`)
-      ),
-      h('section', { class: 'card' },
-        h('h2', null, 'Synchronisation entre appareils'),
-        h('p', { class: 'hint' }, cfg.enabled ? (st.state === 'ok' ? '✔ Synchronisation active.' : st.state === 'error' ? '⚠ ' + st.message : 'Synchronisation en cours…') : 'Non configurée : les données restent uniquement sur cet appareil. Voir le guide d’installation (README) pour créer le projet Supabase gratuit.'),
-        h('label', { class: 'field' }, h('span', null, 'Adresse du projet Supabase'), url),
-        h('label', { class: 'field' }, h('span', null, 'Clé publique (anon)'), anon),
-        h('div', { class: 'toolbar' },
-          h('button', { type: 'button', class: 'btn', onclick: () => { store.setSyncConfig(url.value.trim(), anon.value.trim()); store.restartSync(); toast('Réglages de synchronisation enregistrés.'); setTimeout(paint, 2500); } }, 'Enregistrer'),
-          cfg.enabled ? h('button', { type: 'button', class: 'btn', onclick: async (e) => busy(e.target, async () => { await store.syncNow(); paint(); }) }, '↻ Synchroniser maintenant') : null
-        )
       ),
       h('section', { class: 'card' },
         h('h2', null, 'Sauvegarde'),

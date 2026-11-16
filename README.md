@@ -81,7 +81,8 @@ Sync uses a free [Supabase](https://supabase.com) project as an encrypted mailbo
 3. *Authentication › Sign In / Providers › Email*: turn **Confirm email** off
    (simplest), or leave it on and click the link received at step 5.
 4. *Project Settings › API*: copy the **Project URL** and the **anon / publishable
-   key** into `config.js`, commit, and let the host redeploy.
+   key** into `config.js`, commit, and let the host redeploy. (Sync is configured
+   only there; the app has no sync settings screen.)
 5. Open the app, choose *Créer mon accès* and create the doctor's account.
 6. Close the door:
    - Supabase *Authentication › Sign In / Providers*: turn **Allow new users to

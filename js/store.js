@@ -46,19 +46,15 @@ function setStatus(state, message = '') {
 export const getStatus = () => status;
 
 // ---------- Sync configuration ----------
+// La synchronisation se règle uniquement dans config.js (plus de réglage par appareil).
+try {
+  localStorage.removeItem(CFG_KEY); // ancien réglage par appareil, désormais ignoré
+} catch {}
 export function syncConfig() {
-  let local = {};
-  try {
-    local = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-  } catch {}
   const base = window.ORDONNANCE_CONFIG || {};
-  const url = (local.url || base.supabaseUrl || '').trim().replace(/\/+$/, '');
-  const anon = (local.anon || base.supabaseAnonKey || '').trim();
-  return { url, anon, enabled: !!(url && anon), fromFile: !local.url && !!base.supabaseUrl };
-}
-export function setSyncConfig(url, anon) {
-  if (url || anon) localStorage.setItem(CFG_KEY, JSON.stringify({ url, anon }));
-  else localStorage.removeItem(CFG_KEY);
+  const url = (base.supabaseUrl || '').trim().replace(/\/+$/, '');
+  const anon = (base.supabaseAnonKey || '').trim();
+  return { url, anon, enabled: !!(url && anon) };
 }
 
 // ---------- Account / unlock ----------
@@ -361,7 +357,6 @@ function startSync() {
   syncNow();
   syncTimer = setInterval(syncNow, 60000);
 }
-export const restartSync = startSync;
 addEventListener('online', () => key && syncNow());
 document.addEventListener('visibilitychange', () => !document.hidden && key && syncNow());
 
