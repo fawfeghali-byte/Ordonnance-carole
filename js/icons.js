@@ -60,21 +60,28 @@ export function icon(name, cls = '') {
   return s;
 }
 
-// Logo : feuille d'ordonnance arrondie, monogramme « Rx » et petite croix médicale.
+// Logo : cèdre du Liban sur une feuille d'ordonnance au coin plié, sur une tuile teal.
 export const LOGO_SVG = `<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
   <defs>
-    <linearGradient id="lg-bg" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+    <linearGradient id="lg-tile" x1="6" y1="2" x2="58" y2="62" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#14b8a6"/><stop offset=".55" stop-color="#0e7490"/><stop offset="1" stop-color="#155e75"/>
     </linearGradient>
+    <linearGradient id="lg-cedar" x1="32" y1="12" x2="32" y2="39" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#lg-bg)"/>
-  <path d="M2 34c14-6 30 8 60-6v17a17 17 0 0 1-17 17H19A17 17 0 0 1 2 45z" fill="#fff" opacity=".08"/>
-  <g fill="none" stroke="#fff" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M19 47V17h10.5a8 8 0 0 1 0 16H19"/>
-    <path d="M27 33l17 16"/>
-    <path d="M35.5 49 46 38.5"/>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#lg-tile)"/>
+  <path d="M19 8.5h22.5l10.5 10.5v32a4.5 4.5 0 0 1-4.5 4.5H19a4.5 4.5 0 0 1-4.5-4.5V13A4.5 4.5 0 0 1 19 8.5z" fill="#fff"/>
+  <path class="logo-fold" d="M41.5 8.5v7a3.5 3.5 0 0 0 3.5 3.5h7z" fill="#bfe6ec"/>
+  <g class="logo-cedar" fill="url(#lg-cedar)">
+    <rect x="31.1" y="30" width="3" height="9.5" rx="1.2"/>
+    <path d="M27.6 17.8C28.75 13.9 31.17 12.6 32.6 12.6C34.03 12.6 36.45 13.9 37.6 17.8Q32.6 16.9 27.6 17.8z"/>
+    <path d="M24.1 22.4C26.06 18.2 30.17 16.8 32.6 16.8C35.03 16.8 39.14 18.2 41.1 22.4Q32.6 21.5 24.1 22.4z"/>
+    <path d="M20.6 27.4C23.37 22.9 29.17 21.4 32.6 21.4C36.03 21.4 41.83 22.9 44.6 27.4Q32.6 26.5 20.6 27.4z"/>
+    <path d="M17.1 32.6C20.68 27.95 28.17 26.4 32.6 26.4C37.03 26.4 44.52 27.95 48.1 32.6Q32.6 31.7 17.1 32.6z"/>
   </g>
-  <g class="logo-cross"><rect x="42" y="11" width="12" height="12" rx="3.5" fill="#fff"/><path d="M48 13.8v6.4M44.8 17h6.4" stroke="#0e7490" stroke-width="2.4" stroke-linecap="round"/></g>
+  <rect x="23" y="42.5" width="18" height="2.6" rx="1.3" fill="#9fd6e0"/>
+  <rect x="25.5" y="47.5" width="13" height="2.6" rx="1.3" fill="#cfe9ee"/>
 </svg>`;
 
 export function logo(cls = '') {

@@ -176,8 +176,10 @@ details.card[open] > summary ~ * { animation: rise var(--t-slow) var(--ease-out)
 .logo.sm { width: 36px; height: 36px; }
 .logo.md { width: 44px; height: 44px; }
 .logo.lg { width: 72px; height: 72px; margin: 0 auto 10px; }
-.logo .logo-cross { transform-origin: 48px 17px; transition: transform var(--t-slow) var(--ease-spring); }
-.brand:hover .logo-cross, .logo.lg:hover .logo-cross { transform: rotate(90deg) scale(1.08); }
+.logo .logo-cedar { transform-origin: 32px 38px; transition: transform var(--t-slow) var(--ease-spring); }
+.logo .logo-fold { transform-origin: 52px 8.5px; transition: transform var(--t-slow) var(--ease-out); }
+.brand:hover .logo-cedar, .login-brand-top:hover .logo-cedar { transform: rotate(-4deg) scale(1.06); }
+.brand:hover .logo-fold, .login-brand-top:hover .logo-fold { transform: scale(1.18); }
 .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
