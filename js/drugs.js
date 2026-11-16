@@ -13,15 +13,32 @@ function build() {
   }));
 }
 
-export async function loadDrugs(force = false) {
-  let data = force ? null : await store.kvGet('drugdb');
-  if (!data) {
-    const res = await fetch('data/drugs-moph.json', { cache: force ? 'reload' : 'default' });
-    if (!res.ok) throw new Error('Liste introuvable');
-    data = await res.json();
-    await store.kvSet('drugdb', data);
+// La copie locale sert tout de suite ; la version publiée sur le site la remplace automatiquement
+// quand elle a changé (aucun bouton nécessaire).
+async function fetchPublished() {
+  const res = await fetch('data/drugs-moph.json', { cache: 'no-cache' });
+  if (!res.ok) throw new Error('Liste introuvable');
+  return res.json();
+}
+
+export async function loadDrugs() {
+  const cached = await store.kvGet('drugdb');
+  if (cached) {
+    db = cached;
+    build();
+    fetchPublished()
+      .then(async (fresh) => {
+        if (fresh?.rows?.length && fresh.updated !== db.updated) {
+          await store.kvSet('drugdb', fresh);
+          db = fresh;
+          build();
+        }
+      })
+      .catch(() => {}); // hors ligne : on garde la copie locale
+    return info();
   }
-  db = data;
+  db = await fetchPublished();
+  await store.kvSet('drugdb', db);
   build();
   return info();
 }

@@ -22,7 +22,8 @@ The interface is in French or English. No build step, no dependencies: plain HTM
   Long text shrinks slightly, then a warning appears.
 - **Medication autocomplete** – 4,988 products from the Ministry of Public
   Health's *Lebanon National Drugs Database*, with strength, form and **B**rand /
-  **G**eneric flag, plus a personal list with usual dosage.
+  **G**eneric flag, plus a personal list with usual dosage. The list updates itself
+  on every device when a new version is published.
 - **Printing** – impact (one pass on the full set) or inkjet/laser (1–3 copies,
   one per separated sheet). Page size = the form, zero margins, black text.
 - **Calibration** – page size, global nudge, drag or type each field's position,
@@ -104,7 +105,7 @@ If you self-host Supabase on another domain, add it to `connect-src` in the
 node scripts/update-drugs.mjs    # rewrites data/drugs-moph.json from moph.gov.lb
 ```
 
-Commit and redeploy, then click *Médicaments › Actualiser la liste* in the app.
+Commit and redeploy: each device picks up the new list by itself the next time the app is opened.
 
 ## Project layout
 

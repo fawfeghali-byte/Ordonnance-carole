@@ -3,7 +3,7 @@ import { h, norm, toast, dialog, confirmBox, promptBox, download, fmtDateTime } 
 import * as store from './store.js';
 import { t, getLang, setLang } from './i18n.js';
 import { renderPage, scaled, printPages, medText } from './form.js';
-import { loadDrugs, info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
+import { info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
 import { emptyDoc, emptyMed, docFromPreset, folderSelect } from './editor.js';
 import { DEFAULT_LAYOUT, FONT_CHOICES } from './defaults.js';
 
@@ -271,13 +271,12 @@ export function drugsView() {
   const q = h('input', { class: 'input search', type: 'search', placeholder: 'Vérifier un médicament dans la liste du Ministère…', oninput: () => {
     results.replaceChildren(...drugSearch(q.value, 40).filter((d) => !d.mine).map((d) => h('div', { class: 'row' }, h('div', { class: 'grow' }, h('div', { class: 'row-title' }, d.name, ' ', d.strength, d.form ? ' – ' + d.form : '', ' ', bgBadge(d.bg)), h('div', { class: 'row-sub' }, d.ingredients)))));
   } });
-  const refreshBtn = h('button', { type: 'button', class: 'btn', onclick: () => busy(refreshBtn, async () => { await loadDrugs(true); paintInfo(); toast('Liste des médicaments actualisée.'); }) }, '↻ Actualiser la liste');
 
   paintMine();
   paintInfo();
   root.append(
     h('section', { class: 'card' }, h('div', { class: 'toolbar' }, h('h2', null, 'Mes médicaments'), h('button', { type: 'button', class: 'btn primary', onclick: () => editMine(null) }, '＋ Ajouter')), h('p', { class: 'hint' }, 'Proposés en premier (★) pendant la saisie, avec leur posologie habituelle.'), mine),
-    h('section', { class: 'card' }, h('div', { class: 'toolbar' }, h('h2', null, 'Liste du Ministère de la Santé'), refreshBtn), infoLine, q, results)
+    h('section', { class: 'card' }, h('div', { class: 'toolbar' }, h('h2', null, 'Liste du Ministère de la Santé')), infoLine, q, results)
   );
   root.repaint = paintMine;
   return root;
