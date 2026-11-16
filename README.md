@@ -117,7 +117,9 @@ Commit and redeploy: each device picks up the new list by itself the next time t
 
 | Path | Purpose |
 | --- | --- |
-| `index.html`, `css/app.css` | Page, styles, print rules |
+| `index.html`, `css/app.css` | Page, design system (colours, type, animations), print rules |
+| `js/icons.js`, `assets/logo.svg` | SVG icons and the app logo |
+| `assets/fonts/` | Self-hosted Figtree and Noto Sans Arabic (SIL Open Font License) |
 | `config.js` | Sync settings |
 | `js/defaults.js` | Default field positions (mm) and print settings |
 | `assets/formulaire.svg`, `scripts/build-form-svg.py` | Redrawn form used as preview background (never printed) |

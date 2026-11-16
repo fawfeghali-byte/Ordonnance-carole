@@ -2,6 +2,7 @@
 import { h, norm, today, toast, dialog, confirmBox, promptBox, download, fmtDateTime } from './util.js';
 import * as store from './store.js';
 import { t, getLang, setLang } from './i18n.js';
+import { logo, icon as svgIcon } from './icons.js';
 import { renderPage, scaled, printPages, splitPages, medText } from './form.js';
 import { patients, searchPatients, patientValues, entryDate, docOf } from './patients.js';
 import { info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
@@ -9,16 +10,18 @@ import { emptyDoc, emptyMed, docFromPreset, folderSelect } from './editor.js';
 import { DEFAULT_LAYOUT, FONT_CHOICES } from './defaults.js';
 
 const busy = async (btn, fn) => {
-  const label = btn.textContent;
+  const label = [...btn.childNodes];
   btn.disabled = true;
-  btn.textContent = t('Un instant…');
+  btn.classList.add('loading');
+  btn.replaceChildren(h('span', { class: 'spinner', 'aria-hidden': 'true' }), t('Un instant…'));
   try {
     await fn();
   } catch (e) {
     toast(e instanceof store.AppError ? e.message : 'Erreur : ' + (e.message || e), 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = label;
+    btn.classList.remove('loading');
+    btn.replaceChildren(...label);
   }
 };
 
@@ -53,8 +56,7 @@ export async function loginView(onUnlocked) {
         },
       },
       langSwitch(paint),
-      h('div', { class: 'logo' }, '℞'),
-      h('h1', null, 'Ordonnance'),
+      h('h1', null, mode === 'create' ? 'Créer votre accès' : 'Bon retour'),
       h('p', { class: 'hint center' }, mode === 'create' ? 'Première utilisation : choisissez votre e-mail et un mot de passe.' : 'Accès réservé au médecin.'),
       h('label', { class: 'field' }, h('span', null, 'E-mail'), email),
       h('label', { class: 'field' }, h('span', null, 'Mot de passe'), pw),
@@ -82,7 +84,23 @@ export async function loginView(onUnlocked) {
           ),
       h('p', { class: 'hint center' }, cfg.enabled ? 'Synchronisation activée — données chiffrées de bout en bout.' : 'Mode local : les données restent chiffrées sur cet appareil (synchronisation non configurée).')
     );
-    root.replaceChildren(form);
+    const perk = (ic, title, text) => h('li', null, svgIcon(ic), h('div', null, h('b', null, title), h('span', null, text)));
+    const brand = h(
+      'aside',
+      { class: 'login-brand' },
+      h('div', { class: 'login-brand-top' }, logo('md'), h('span', { class: 'brand-name' }, document.createTextNode('Ordonnance'))),
+      h('h2', null, 'Vos ordonnances, prêtes en quelques clics.'),
+      h(
+        'ul',
+        { class: 'perks' },
+        perk('layers', 'Modèles réutilisables', 'Choisissez un modèle, ajoutez le patient, imprimez.'),
+        perk('target', 'Impression au millimètre', 'Le texte tombe dans les cases du formulaire officiel.'),
+        perk('shield', 'Données chiffrées', 'Protégées par votre mot de passe, sur tous vos appareils.')
+      ),
+      h('div', { class: 'login-orb a' }),
+      h('div', { class: 'login-orb b' })
+    );
+    root.replaceChildren(h('div', { class: 'login-shell' }, brand, form));
     (account ? pw : email).focus();
   };
   paint();
@@ -184,7 +202,7 @@ export function presetsView(nav) {
       return l.sort((a, b) => !!b.data.favorite - !!a.data.favorite || a.data.name.localeCompare(b.data.name, 'fr'));
     };
     const pending = nav.pendingPatient;
-    root.replaceChildren(
+    root.replaceChildren(...[
       pending
         ? h('div', { class: 'note info pending' },
             h('div', { dir: 'auto' }, t('Nouvelle ordonnance pour') + ' ', h('b', null, pending.patientName), ' — ' + t('choisissez un modèle ou une ordonnance vierge.')),
@@ -196,8 +214,8 @@ export function presetsView(nav) {
         search
       ),
       h('div', { class: 'chips' }, chip('all', 'Tous'), chip('fav', '★ Favoris'), folders().map((f) => chip(f.id, f.data.name)), h('button', { type: 'button', class: 'chip ghost', onclick: manageFolders }, '⚙ Dossiers')),
-      grid
-    );
+      grid,
+    ].filter(Boolean));
     paintGrid();
   }
   paint();

@@ -1,4 +1,5 @@
-import { h, toast } from './util.js';
+import { h, toast, label as iconLabel } from './util.js';
+import { logo, icon } from './icons.js';
 import * as store from './store.js';
 import { loadDrugs } from './drugs.js';
 import { createEditor } from './editor.js';
@@ -7,10 +8,10 @@ import { langSwitch, loginView, presetsView, historyView, resetHistory, drugsVie
 
 const app = document.getElementById('app');
 const TABS = [
-  ['presets', 'Ordonnance'],
-  ['history', 'Historique'],
-  ['drugs', 'Médicaments'],
-  ['settings', 'Réglages'],
+  ['presets', 'Ordonnance', 'file-text'],
+  ['history', 'Historique', 'clock'],
+  ['drugs', 'Médicaments', 'pill'],
+  ['settings', 'Réglages', 'settings'],
 ];
 let tab = 'presets';
 let editor = null; // écran de saisie en cours (conservé quand on change d'onglet)
@@ -43,10 +44,10 @@ function relabel() {
 
 function render() {
   langEl.replaceChildren(langSwitch(relabel));
-  lockBtn.textContent = t('🔒 Verrouiller');
+  lockBtn.replaceChildren(iconLabel('🔒 Verrouiller'));
   tabsEl.replaceChildren(
-    ...TABS.map(([id, label]) =>
-      h('button', { type: 'button', class: 'tab' + (id === tab || (id === 'settings' && tab === 'calibration') ? ' on' : ''), onclick: () => { if (id === 'history' && tab === 'history') resetHistory(); nav.go(id); } }, label)
+    ...TABS.map(([id, label, ic]) =>
+      h('button', { type: 'button', class: 'tab' + (id === tab || (id === 'settings' && tab === 'calibration') ? ' on' : ''), onclick: () => { if (id === 'history' && tab === 'history') resetHistory(); nav.go(id); } }, icon(ic), h('span', null, label))
     )
   );
   if (tab === 'presets') current = editor || presetsView(nav);
@@ -62,7 +63,7 @@ const lockBtn = h('button', { type: 'button', class: 'btn small', onclick: () =>
 
 function shell() {
   app.replaceChildren(
-    h('header', { class: 'top' }, h('div', { class: 'brand' }, h('span', { class: 'logo sm' }, '℞'), document.createTextNode('Ordonnance')), tabsEl, h('div', { class: 'spacer' }), statusEl, langEl, lockBtn),
+    h('header', { class: 'top' }, h('div', { class: 'brand' }, logo('sm'), h('span', { class: 'brand-name' }, document.createTextNode('Ordonnance'))), tabsEl, h('div', { class: 'spacer' }), statusEl, langEl, lockBtn),
     main
   );
   tab = 'presets';
@@ -103,7 +104,7 @@ for (const ev of ['pointerdown', 'keydown', 'input', 'scroll']) addEventListener
 function paintStatus(s) {
   const map = { off: ['', ''], syncing: ['Synchronisation…', 'busy'], ok: ['✔ Synchronisé', 'ok'], error: ['⚠ Non synchronisé', 'err'] };
   const [label, cls] = map[s.state] || map.off;
-  statusEl.textContent = t(label);
+  statusEl.replaceChildren(iconLabel(label));
   statusEl.className = 'status ' + cls;
   statusEl.hidden = s.state !== 'error'; // visible uniquement en cas de problème
   statusEl.title = t(s.message || 'Synchroniser maintenant');

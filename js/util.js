@@ -1,6 +1,29 @@
 import { t, getLang } from './i18n.js';
+import { GLYPHS, icon } from './icons.js';
 
 const TRANSLATED_PROPS = new Set(['placeholder', 'title', 'aria-label']);
+
+// Un libellé comme « 🖨 Imprimer » devient icône SVG + texte ; « ✕ » seul devient une icône.
+const GLYPH_RE = new RegExp(`^(${Object.keys(GLYPHS).join('|')}) (.+)$`, 'u');
+const GLYPH_END_RE = new RegExp(`^(.+) (${Object.keys(GLYPHS).join('|')})$`, 'u');
+function textNode(s) {
+  const k = s.trim();
+  if (GLYPHS[k]) return icon(GLYPHS[k]);
+  let m = s.match(GLYPH_RE);
+  if (m) {
+    const f = document.createDocumentFragment();
+    f.append(icon(GLYPHS[m[1]]), document.createTextNode(m[2]));
+    return f;
+  }
+  m = s.match(GLYPH_END_RE);
+  if (m) {
+    const f = document.createDocumentFragment();
+    f.append(document.createTextNode(m[1]), icon(GLYPHS[m[2]], 'trail'));
+    return f;
+  }
+  return document.createTextNode(s);
+}
+export const label = (s) => textNode(t(s));
 
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
@@ -15,7 +38,7 @@ export function h(tag, props, ...kids) {
   }
   for (const c of kids.flat(Infinity)) {
     if (c == null || c === false) continue;
-    el.append(c.nodeType ? c : document.createTextNode(t(String(c))));
+    el.append(c.nodeType ? c : textNode(t(String(c))));
   }
   return el;
 }

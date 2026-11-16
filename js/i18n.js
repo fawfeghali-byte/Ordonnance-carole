@@ -46,6 +46,15 @@ const EN = {
   'Modifications non enregistrées': 'Unsaved changes',
 
   // Connexion
+  'Créer votre accès': 'Create your access',
+  'Bon retour': 'Welcome back',
+  'Vos ordonnances, prêtes en quelques clics.': 'Your prescriptions, ready in a few clicks.',
+  'Modèles réutilisables': 'Reusable templates',
+  'Choisissez un modèle, ajoutez le patient, imprimez.': 'Pick a template, add the patient, print.',
+  'Impression au millimètre': 'Millimetre-accurate printing',
+  'Le texte tombe dans les cases du formulaire officiel.': 'Text lands in the boxes of the official form.',
+  'Données chiffrées': 'Encrypted data',
+  'Protégées par votre mot de passe, sur tous vos appareils.': 'Protected by your password, on all your devices.',
   'Créer mon accès': 'Create my access',
   'Se connecter': 'Sign in',
   'Les deux mots de passe ne sont pas identiques.': 'The two passwords do not match.',
