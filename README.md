@@ -28,7 +28,10 @@ The interface is in French or English. No build step, no dependencies: plain HTM
   one per separated sheet). Page size = the form, zero margins, black text.
 - **Calibration** – page size, global nudge, drag or type each field's position,
   scan as background, test print with guide lines on plain paper.
-- **History** – printed ordonnances, search by patient, re-print.
+- **History by patient** – patients (grouped by name, homonyms split by date of
+  birth) › their ordonnances › preview with *Modifier*, *Renouveler* (dated today)
+  and *Ré-imprimer* (identical). Typing a patient's name in a new ordonnance
+  suggests known patients and fills in date of birth and insurer.
 - **Backup** – export/import everything in one file.
 
 ## First-time setup

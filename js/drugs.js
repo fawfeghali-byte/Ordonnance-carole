@@ -1,5 +1,5 @@
 // Liste des médicaments : base du Ministère (fichier local actualisable) + liste personnelle.
-import { h, norm } from './util.js';
+import { h, norm, suggest } from './util.js';
 import * as store from './store.js';
 
 let db = { rows: [], updated: '', source: '' };
@@ -87,47 +87,16 @@ export const bgBadge = (bg) =>
     ? h('span', { class: 'bg bg-' + bg, title: bg === 'B' ? 'Médicament de marque (Brand)' : 'Générique' }, bg)
     : null;
 
-// Liste de suggestions attachée à un champ de saisie.
+// Suggestions de médicaments sous le champ « Médicament ».
 export function autocomplete(input, onPick) {
-  const list = h('div', { class: 'ac-list', hidden: true });
-  let items = [];
-  let active = -1;
-  const close = () => ((list.hidden = true), (active = -1));
-  const pick = (i) => {
-    if (items[i]) onPick(items[i]);
-    close();
-  };
-  const paint = () => {
-    if (!list.isConnected) input.after(list);
-    list.replaceChildren(
-      ...items.map((d, i) =>
-        h(
-          'div',
-          { class: 'ac-item' + (i === active ? ' active' : ''), onmousedown: (e) => (e.preventDefault(), pick(i)) },
-          h('div', { class: 'ac-main' }, d.mine ? h('span', { class: 'star' }, '★ ') : null, h('b', null, d.name), ' ', d.strength, d.form ? ' – ' + d.form : ''),
-          bgBadge(d.bg),
-          d.ingredients ? h('div', { class: 'ac-sub' }, d.ingredients) : null
-        )
-      )
-    );
-    list.hidden = !items.length;
-  };
-  input.addEventListener('input', () => {
-    items = search(input.value);
-    active = -1;
-    paint();
-  });
-  input.addEventListener('keydown', (e) => {
-    if (list.hidden) return;
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
-      paint();
-      list.children[active]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter' && active >= 0) {
-      e.preventDefault();
-      pick(active);
-    } else if (e.key === 'Escape') close();
-  });
-  input.addEventListener('blur', close);
+  suggest(
+    input,
+    (q) => search(q),
+    (d) => [
+      h('div', { class: 'ac-main' }, d.mine ? h('span', { class: 'star' }, '★ ') : null, h('b', null, d.name), ' ', d.strength, d.form ? ' – ' + d.form : ''),
+      bgBadge(d.bg),
+      d.ingredients ? h('div', { class: 'ac-sub' }, d.ingredients) : null,
+    ],
+    onPick
+  );
 }

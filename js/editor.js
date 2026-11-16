@@ -1,5 +1,6 @@
 // Écran de saisie d'une ordonnance (ou d'un modèle) avec aperçu en direct.
-import { h, today, dateMask, toast, confirmBox, promptBox, dialog } from './util.js';
+import { h, today, dateMask, toast, confirmBox, promptBox, dialog, suggest } from './util.js';
+import { searchPatients, entryDate } from './patients.js';
 import { t } from './i18n.js';
 import * as store from './store.js';
 import { renderPage, scaled, splitPages, printPages, medText } from './form.js';
@@ -89,6 +90,7 @@ export function createEditor(opts) {
   const touch = () => ((dirty = true), refresh());
 
   // ----- Champs -----
+  const inputs = {};
   function valueInput(f) {
     const input = h('input', {
       class: 'input',
@@ -100,8 +102,33 @@ export function createEditor(opts) {
       inputMode: f.id === 'birthDate' || f.id === 'date' ? 'numeric' : undefined,
       oninput: () => ((doc.values[f.id] = input.value), touch()),
     });
+    inputs[f.id] = input;
     if (f.id === 'birthDate' || f.id === 'date') dateMask(input);
-    return h('label', { class: 'field' + (f.id === 'patientName' || f.id === 'amountLetters' ? ' wide' : '') }, h('span', null, f.label), input);
+    let control = input;
+    if (f.id === 'patientName' && mode === 'ordonnance') {
+      // Patients déjà vus : compléter le nom, la date de naissance et l'assurance.
+      control = h('div', { class: 'ac-wrap' }, input);
+      suggest(
+        input,
+        (q) => (q.trim().length >= 2 ? searchPatients(q, 8) : []),
+        (p) => [
+          h('div', { class: 'ac-main', dir: 'auto' }, h('b', null, p.name)),
+          h('span', { class: 'ac-count' }, t(`${p.entries.length} ordonnance${p.entries.length > 1 ? 's' : ''}`)),
+          h('div', { class: 'ac-sub' }, [p.birthDate, p.insurance, t('Dernière ordonnance') + ' : ' + entryDate(p.entries[0])].filter(Boolean).join(' · ')),
+        ],
+        (p) => {
+          const vals = { patientName: p.name, birthDate: p.birthDate, insurance: p.insurance };
+          for (const [k, v] of Object.entries(vals)) {
+            if (!v) continue;
+            doc.values[k] = v;
+            if (inputs[k]) inputs[k].value = v;
+          }
+          touch();
+          (inputs.birthDate && !p.birthDate ? inputs.birthDate : inputs.insurance)?.focus();
+        }
+      );
+    }
+    return h('label', { class: 'field' + (f.id === 'patientName' || f.id === 'amountLetters' ? ' wide' : '') }, h('span', null, f.label), control);
   }
 
   function fieldsSection() {
@@ -297,7 +324,7 @@ export function createEditor(opts) {
       at: Date.now(),
       patient: (doc.values.patientName || '').trim(),
       date: doc.values.date || '',
-      presetName: preset?.data.name || '',
+      presetName: preset?.data.name || opts.presetName || '',
       doc: cleanDoc(doc, false),
     });
     await printPages(layout, settings, pages, { copies });
@@ -316,7 +343,7 @@ export function createEditor(opts) {
       : h(
           'div',
           { class: 'ed-head' },
-          h('button', { type: 'button', class: 'btn', onclick: back }, '← Modèles'),
+          h('button', { type: 'button', class: 'btn', onclick: back }, opts.backLabel || '← Modèles'),
           title,
           h('div', { class: 'spacer' }),
           preset ? h('button', { type: 'button', class: 'btn', onclick: saveToPreset, title: 'Enregistre les médicaments et champs actuels dans le modèle (sans le nom du patient)' }, 'Enregistrer dans le modèle') : null,

@@ -119,3 +119,43 @@ export function download(name, text, type = 'application/json') {
   a.click();
   setTimeout(() => (URL.revokeObjectURL(a.href), a.remove()), 1000);
 }
+
+// Liste de suggestions sous un champ de saisie (clavier : ↑ ↓ Entrée Échap).
+// search(texte) -> éléments ; render(élément) -> contenu d'une ligne ; onPick(élément).
+export function suggest(input, search, render, onPick) {
+  const list = h('div', { class: 'ac-list', hidden: true });
+  let items = [];
+  let active = -1;
+  const close = () => ((list.hidden = true), (active = -1));
+  const pick = (i) => {
+    if (items[i]) onPick(items[i]);
+    close();
+  };
+  const paint = () => {
+    if (!list.isConnected) input.after(list);
+    list.replaceChildren(
+      ...items.map((d, i) =>
+        h('div', { class: 'ac-item' + (i === active ? ' active' : ''), onmousedown: (e) => (e.preventDefault(), pick(i)) }, render(d))
+      )
+    );
+    list.hidden = !items.length;
+  };
+  input.addEventListener('input', () => {
+    items = search(input.value);
+    active = -1;
+    paint();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      paint();
+      list.children[active]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && active >= 0) {
+      e.preventDefault();
+      pick(active);
+    } else if (e.key === 'Escape') close();
+  });
+  input.addEventListener('blur', close);
+}

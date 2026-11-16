@@ -3,7 +3,7 @@ import * as store from './store.js';
 import { loadDrugs } from './drugs.js';
 import { createEditor } from './editor.js';
 import { t } from './i18n.js';
-import { langSwitch, loginView, presetsView, historyView, drugsView, settingsView, calibrationView } from './views.js';
+import { langSwitch, loginView, presetsView, historyView, resetHistory, drugsView, settingsView, calibrationView } from './views.js';
 
 const app = document.getElementById('app');
 const TABS = [
@@ -27,10 +27,11 @@ const nav = {
     render();
   },
   openEditor(opts) {
-    editorOpts = { ...opts, onBack: () => ((editor = null), nav.go('presets')) };
+    editorOpts = { ...opts, onBack: () => ((editor = null), nav.go(opts.backTo || 'presets')) };
     editor = createEditor(editorOpts);
     nav.go('presets');
   },
+  pendingPatient: null, // « Nouvelle ordonnance » lancée depuis la fiche d'un patient
 };
 
 // Changement de langue : tout est reconstruit ; l'ordonnance en cours est conservée.
@@ -45,7 +46,7 @@ function render() {
   lockBtn.textContent = t('🔒 Verrouiller');
   tabsEl.replaceChildren(
     ...TABS.map(([id, label]) =>
-      h('button', { type: 'button', class: 'tab' + (id === tab || (id === 'settings' && tab === 'calibration') ? ' on' : ''), onclick: () => nav.go(id) }, label)
+      h('button', { type: 'button', class: 'tab' + (id === tab || (id === 'settings' && tab === 'calibration') ? ' on' : ''), onclick: () => { if (id === 'history' && tab === 'history') resetHistory(); nav.go(id); } }, label)
     )
   );
   if (tab === 'presets') current = editor || presetsView(nav);
@@ -78,6 +79,7 @@ async function showLogin() {
 
 function lock() {
   store.lock();
+  nav.pendingPatient = null;
   editor = null;
   document.querySelectorAll('dialog').forEach((d) => d.close());
   document.getElementById('print-root').replaceChildren();

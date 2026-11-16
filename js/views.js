@@ -1,8 +1,9 @@
 // Écrans : connexion, modèles, historique, médicaments, réglages, calibration.
-import { h, norm, toast, dialog, confirmBox, promptBox, download, fmtDateTime } from './util.js';
+import { h, norm, today, toast, dialog, confirmBox, promptBox, download, fmtDateTime } from './util.js';
 import * as store from './store.js';
 import { t, getLang, setLang } from './i18n.js';
-import { renderPage, scaled, printPages, medText } from './form.js';
+import { renderPage, scaled, printPages, splitPages, medText } from './form.js';
+import { patients, findPatient, searchPatients, patientValues, entryDate, docOf } from './patients.js';
 import { info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
 import { emptyDoc, emptyMed, docFromPreset, folderSelect } from './editor.js';
 import { DEFAULT_LAYOUT, FONT_CHOICES } from './defaults.js';
@@ -96,7 +97,12 @@ export function presetsView(nav) {
   const folders = () => store.all('folder').sort((a, b) => a.data.name.localeCompare(b.data.name));
   const folderName = (id) => store.get(id)?.data.name || '';
 
-  const use = (p) => nav.openEditor({ mode: 'ordonnance', preset: p, doc: docFromPreset(p) });
+  const use = (p) => {
+    const doc = docFromPreset(p);
+    if (nav.pendingPatient) Object.assign(doc.values, nav.pendingPatient);
+    nav.pendingPatient = null;
+    nav.openEditor({ mode: 'ordonnance', preset: p, doc });
+  };
   const edit = (p) => nav.openEditor({ mode: 'preset', preset: p, doc: p ? { values: {}, ...structuredClone(p.data.doc), meds: [...structuredClone(p.data.doc.meds || []), emptyMed()] } : emptyDoc() });
   const patch = (p, d) => store.put('preset', { ...p.data, ...d }, p.id).then(paint);
 
@@ -177,7 +183,13 @@ export function presetsView(nav) {
       else if (pv.filter !== 'all') l = l.filter((p) => p.data.folderId === pv.filter);
       return l.sort((a, b) => !!b.data.favorite - !!a.data.favorite || a.data.name.localeCompare(b.data.name, 'fr'));
     };
+    const pending = nav.pendingPatient;
     root.replaceChildren(
+      pending
+        ? h('div', { class: 'note info pending' },
+            h('div', { dir: 'auto' }, t('Nouvelle ordonnance pour') + ' ', h('b', null, pending.patientName), ' — ' + t('choisissez un modèle ou une ordonnance vierge.')),
+            h('button', { type: 'button', class: 'btn small', onclick: () => ((nav.pendingPatient = null), paint()) }, 'Annuler'))
+        : null,
       h('div', { class: 'toolbar' },
         h('button', { type: 'button', class: 'btn primary big', onclick: () => use(null) }, '＋ Ordonnance vierge'),
         h('button', { type: 'button', class: 'btn big', onclick: () => edit(null) }, '＋ Nouveau modèle'),
@@ -193,32 +205,189 @@ export function presetsView(nav) {
   return root;
 }
 
-// ======================= Historique =======================
-let historyQuery = '';
+// ======================= Historique : patients › ordonnances › détail =======================
+const hv = { q: '', patient: null, entry: null };
+export const resetHistory = () => Object.assign(hv, { patient: null, entry: null });
+
+const medsOf = (r) => (r.data.doc.meds || []).filter((m) => medText(m));
+const initials = (name) =>
+  (name || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?';
+const countLabel = (n) => `${n} ordonnance${n > 1 ? 's' : ''}`;
+
+// Ré-impression à l'identique (même date, mêmes lignes) : n'ajoute rien à l'historique.
+async function reprint(r) {
+  const layout = store.layout();
+  const settings = store.settings();
+  const { pages } = splitPages({ ...docOf(r), split: true }, layout);
+  const copies = settings.printerType === 'inkjet' ? Math.max(1, Math.min(3, settings.copies)) : 1;
+  const sheets = pages.length * copies;
+  if (sheets > 1 && !(await confirmBox('Prêt à imprimer', `${sheets} feuilles vont être imprimées. Placez les feuillets dans le bac, dans l’ordre.`, 'Imprimer'))) return;
+  await printPages(layout, settings, pages, { copies });
+}
+
 export function historyView(nav) {
   const root = h('div', { class: 'view' });
-  const list = h('div', { class: 'rows' });
-  const search = h('input', { class: 'input search', type: 'search', dir: 'auto', placeholder: 'Rechercher par nom de patient…', value: historyQuery, oninput: () => ((historyQuery = search.value), paint()) });
-  function paint() {
-    const q = norm(historyQuery);
-    const items = store.all('history').filter((r) => !q || norm(r.data.patient).includes(q)).sort((a, b) => b.data.at - a.data.at);
-    list.replaceChildren(
-      ...items.slice(0, 300).map((r) => {
-        const n = (r.data.doc.meds || []).length;
-        return h(
+
+  const openEditor = (r, renew) => {
+    const doc = structuredClone(docOf(r));
+    if (renew) doc.values.date = today();
+    doc.split = true;
+    doc.meds = [...(doc.meds || []).filter((m) => medText(m)), emptyMed()];
+    const who = r.data.patient || 'sans nom';
+    nav.openEditor({ mode: 'ordonnance', preset: null, presetName: r.data.presetName, doc, title: (renew ? 'Renouvellement — ' : 'Modification — ') + who, backTo: 'history', backLabel: '← Retour' });
+  };
+  const newFor = (p) => {
+    nav.pendingPatient = patientValues(p);
+    nav.go('presets');
+  };
+  const del = async (r) => {
+    if (!(await confirmBox('Supprimer', 'Supprimer cette ordonnance de l’historique ?', 'Supprimer', true))) return;
+    await store.remove(r.id);
+    hv.entry = null;
+    paint();
+  };
+
+  // --- 1. Liste des patients ---
+  function patientList() {
+    const list = h('div', { class: 'rows' });
+    const fill = () => {
+      const found = searchPatients(hv.q);
+      const noName = hv.q.trim() ? [] : patients().filter((p) => !p.name);
+      const shown = [...found, ...noName];
+      list.replaceChildren(
+        ...shown.slice(0, 200).map((p) =>
+          h(
+            'button',
+            { type: 'button', class: 'row prow', onclick: () => ((hv.patient = p.key), paint()) },
+            h('span', { class: 'avatar', dir: 'auto' }, p.name ? initials(p.name) : '?'),
+            h(
+              'span',
+              { class: 'grow' },
+              h('span', { class: 'row-title', dir: 'auto' }, p.name || '(sans nom)'),
+              h('span', { class: 'row-sub' }, [p.birthDate, p.insurance].filter(Boolean).join(' · ') || ' ')
+            ),
+            h('span', { class: 'row-meta' }, h('b', null, countLabel(p.entries.length)), h('span', null, entryDate(p.entries[0]))),
+            h('span', { class: 'chev' }, '›')
+          )
+        )
+      );
+      if (!shown.length) list.append(h('p', { class: 'empty' }, hv.q.trim() ? 'Aucun patient ne correspond.' : 'Les ordonnances imprimées apparaîtront ici, classées par patient.'));
+      else if (shown.length > 200) list.append(h('p', { class: 'hint' }, 'Affinez la recherche pour voir les autres patients.'));
+    };
+    const search = h('input', { class: 'input search', type: 'search', dir: 'auto', placeholder: 'Rechercher un patient…', value: hv.q, oninput: () => ((hv.q = search.value), fill()) });
+    fill();
+    return [h('div', { class: 'toolbar' }, h('h2', null, 'Patients'), search), list];
+  }
+
+  // --- 2. Fiche d'un patient : ses ordonnances ---
+  function patientPage(p) {
+    const cards = p.entries.map((r) => {
+      const meds = medsOf(r);
+      return h(
+        'button',
+        { type: 'button', class: 'hcard', onclick: () => ((hv.entry = r.id), paint()) },
+        h('span', { class: 'hcard-head' }, h('b', null, entryDate(r)), h('span', { class: 'tag' }, r.data.presetName || 'Ordonnance vierge')),
+        h(
+          'span',
+          { class: 'hcard-meds' },
+          meds.slice(0, 4).map((m) => h('span', { class: 'hmed', dir: 'auto' }, m.ns ? h('i', { class: 'ns-tag' }, 'NS') : null, medText(m))),
+          meds.length > 4 ? h('span', { class: 'hint' }, `+ ${meds.length - 4}`) : null,
+          meds.length ? null : h('span', { class: 'hint' }, 'Aucun médicament')
+        ),
+        h('span', { class: 'use' }, 'Voir →')
+      );
+    });
+    return [
+      h(
+        'div',
+        { class: 'ed-head' },
+        h('button', { type: 'button', class: 'btn', onclick: () => ((hv.patient = null), paint()) }, '← Patients'),
+        h('span', { class: 'avatar big', dir: 'auto' }, initials(p.name)),
+        h('div', { class: 'grow' }, h('h2', { class: 'ed-title', dir: 'auto' }, p.name || '(sans nom)'), h('div', { class: 'row-sub' }, [p.birthDate && t('Né(e) le') + ' ' + p.birthDate, p.insurance, countLabel(p.entries.length)].filter(Boolean).join(' · '))),
+        p.name ? h('button', { type: 'button', class: 'btn primary big', onclick: () => newFor(p) }, '＋ Nouvelle ordonnance') : null
+      ),
+      h('div', { class: 'hgrid' }, cards),
+    ];
+  }
+
+  // --- 3. Une ordonnance : aperçu, modifier, renouveler, ré-imprimer ---
+  function entryPage(p, r) {
+    const layout = store.layout();
+    const settings = store.settings();
+    const { pages } = splitPages({ ...docOf(r), split: true }, layout);
+    let pi = 0;
+    const host = h('div', { class: 'preview-host' });
+    const tabs = h('div', { class: 'page-tabs' });
+    const show = () => {
+      const { el } = renderPage(layout, settings, pages[pi], { scan: store.scan(), scanOpacity: settings.scanOpacity });
+      host.replaceChildren(scaled(el, layout).el);
+      tabs.replaceChildren(...(pages.length > 1 ? pages.map((_, i) => h('button', { type: 'button', class: 'chip' + (i === pi ? ' on' : ''), onclick: () => ((pi = i), show()) }, `Formulaire ${i + 1}/${pages.length}`)) : []));
+    };
+    show();
+    const v = docOf(r).values;
+    const fields = layout.fields.filter((f) => f.kind === 'text' && !f.from && !['patientName'].includes(f.id) && (v[f.id] || '').trim());
+    const meds = medsOf(r);
+    return [
+      h(
+        'div',
+        { class: 'ed-head' },
+        h('button', { type: 'button', class: 'btn', onclick: () => ((hv.entry = null), paint()) }, '← ' + (p.name || t('(sans nom)'))),
+        h('h2', { class: 'ed-title' }, t('Ordonnance du') + ' ' + entryDate(r)),
+        h('div', { class: 'spacer' }),
+        h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, false), title: 'Ouvrir cette ordonnance pour la corriger, puis l’imprimer' }, '✎ Modifier'),
+        h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, true), title: 'Même ordonnance, datée d’aujourd’hui' }, '↻ Renouveler'),
+        h('button', { type: 'button', class: 'btn primary big', onclick: () => reprint(r), title: 'Imprimer exactement la même ordonnance' }, '🖨 Ré-imprimer')
+      ),
+      h(
+        'div',
+        { class: 'ed-cols' },
+        h(
           'div',
-          { class: 'row' },
-          h('div', { class: 'grow' }, h('div', { class: 'row-title', dir: 'auto' }, r.data.patient || '(sans nom)'), h('div', { class: 'row-sub' }, `${fmtDateTime(r.data.at)} · ${r.data.presetName || 'Ordonnance vierge'} · ${n} ligne${n > 1 ? 's' : ''}`)),
-          h('button', { type: 'button', class: 'btn', onclick: () => nav.openEditor({ mode: 'ordonnance', preset: null, title: 'Ré-impression — ' + (r.data.patient || 'sans nom'), doc: { values: {}, ...structuredClone(r.data.doc), split: true, meds: [...structuredClone(r.data.doc.meds || []), emptyMed()] } }) }, '🖨 Ré-imprimer'),
-          h('button', { type: 'button', class: 'icon', title: 'Supprimer de l’historique', onclick: async () => { if (await confirmBox('Supprimer', 'Supprimer cette ordonnance de l’historique ?', 'Supprimer', true)) (await store.remove(r.id), paint()); } }, '✕')
-        );
-      })
-    );
-    if (!items.length) list.append(h('p', { class: 'empty' }, q ? 'Aucune ordonnance pour ce nom.' : 'Les ordonnances imprimées apparaîtront ici.'));
-    else if (items.length > 300) list.append(h('p', { class: 'hint' }, `${items.length - 300} ordonnances plus anciennes : affinez la recherche pour les voir.`));
+          null,
+          h(
+            'section',
+            { class: 'card' },
+            h('h3', null, 'Patient'),
+            h('dl', { class: 'facts' }, [
+              h('dt', null, 'Nom et prénom du patient'), h('dd', { dir: 'auto' }, r.data.patient || '—'),
+              v.birthDate ? [h('dt', null, 'Date de naissance'), h('dd', null, v.birthDate)] : null,
+              v.date ? [h('dt', null, 'Date'), h('dd', null, v.date)] : null,
+              fields.filter((f) => f.id !== 'birthDate' && f.id !== 'date').map((f) => [h('dt', null, f.label), h('dd', { dir: 'auto' }, v[f.id])]),
+            ])
+          ),
+          h(
+            'section',
+            { class: 'card' },
+            h('h3', null, 'Médicaments, traitements et examens prescrits'),
+            meds.length ? h('ol', { class: 'hlist' }, meds.map((m) => h('li', { dir: 'auto' }, m.ns ? h('i', { class: 'ns-tag' }, 'NS') : null, medText(m)))) : h('p', { class: 'hint' }, 'Aucun médicament')
+          ),
+          h(
+            'p',
+            { class: 'hint' },
+            t('Imprimée le') + ' ' + fmtDateTime(r.data.at) + (r.data.presetName ? ' · ' + t('Modèle') + ' : ' + r.data.presetName : ''),
+            ' · ',
+            h('button', { type: 'button', class: 'link danger-text', onclick: () => del(r) }, 'Supprimer de l’historique')
+          )
+        ),
+        h('div', { class: 'ed-preview' }, h('div', { class: 'preview-sticky' }, tabs, host))
+      ),
+    ];
+  }
+
+  function paint() {
+    const p = hv.patient ? findPatient(hv.patient) : null;
+    if (!p) Object.assign(hv, { patient: null, entry: null });
+    const r = p && hv.entry ? p.entries.find((e) => e.id === hv.entry) : null;
+    if (!r) hv.entry = null;
+    root.replaceChildren(...(r ? entryPage(p, r) : p ? patientPage(p) : patientList()).flat());
+    scrollTo(0, 0);
   }
   paint();
-  root.append(h('div', { class: 'toolbar' }, h('h2', null, 'Historique'), search), list);
   root.repaint = paint;
   return root;
 }
