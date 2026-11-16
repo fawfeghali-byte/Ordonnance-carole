@@ -216,10 +216,13 @@ export function menuButton(items, title = 'Autres actions') {
     el.style.left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8)) + 'px';
     el.style.top = (below ? r.bottom + 6 : Math.max(8, r.top - 6 - hgt)) + 'px';
     el.style.transformOrigin = below ? 'top right' : 'bottom right';
-    const onDoc = (ev) => !el.contains(ev.target) && closeMenu();
+    // Le bouton ⋯ lui-même gère l'ouverture/fermeture : on l'ignore ici.
+    const onDoc = (ev) => !el.contains(ev.target) && !btn.contains(ev.target) && closeMenu();
     const onKey = (ev) => ev.key === 'Escape' && (closeMenu(), btn.focus());
     const onMove = () => closeMenu();
-    setTimeout(() => document.addEventListener('pointerdown', onDoc, true));
+    // Fermeture au toucher / clic n'importe où ailleurs (plusieurs événements pour iPad, souris et clavier).
+    const outside = ['pointerdown', 'mousedown', 'touchstart', 'focusin'];
+    setTimeout(() => outside.forEach((t) => document.addEventListener(t, onDoc, { capture: true, passive: true })));
     document.addEventListener('keydown', onKey);
     addEventListener('scroll', onMove, { passive: true, capture: true });
     addEventListener('resize', onMove);
@@ -227,7 +230,7 @@ export function menuButton(items, title = 'Autres actions') {
       el,
       btn,
       off: () => {
-        document.removeEventListener('pointerdown', onDoc, true);
+        outside.forEach((t) => document.removeEventListener(t, onDoc, { capture: true }));
         document.removeEventListener('keydown', onKey);
         removeEventListener('scroll', onMove, { capture: true });
         removeEventListener('resize', onMove);
