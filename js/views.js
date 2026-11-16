@@ -3,7 +3,7 @@ import { h, norm, today, toast, dialog, confirmBox, promptBox, download, fmtDate
 import * as store from './store.js';
 import { t, getLang, setLang } from './i18n.js';
 import { renderPage, scaled, printPages, splitPages, medText } from './form.js';
-import { patients, findPatient, searchPatients, patientValues, entryDate, docOf } from './patients.js';
+import { patients, searchPatients, patientValues, entryDate, docOf } from './patients.js';
 import { info as drugInfo, search as drugSearch, bgBadge } from './drugs.js';
 import { emptyDoc, emptyMed, docFromPreset, folderSelect } from './editor.js';
 import { DEFAULT_LAYOUT, FONT_CHOICES } from './defaults.js';
@@ -205,19 +205,34 @@ export function presetsView(nav) {
   return root;
 }
 
-// ======================= Historique : patients › ordonnances › détail =======================
-const hv = { q: '', patient: null, entry: null };
-export const resetHistory = () => Object.assign(hv, { patient: null, entry: null });
+// ======================= Historique : explorateur façon « Drive » =======================
+// Dossiers = patients, fichiers = ordonnances imprimées. Fil d'Ariane, grille ou liste, tri, menu ⋯.
+const VIEW_KEY = 'ordonnance-history-view';
+const hv = { q: '', patient: null, entry: null, sort: 'recent', view: 'grid' };
+try {
+  hv.view = localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid';
+} catch {}
+export const resetHistory = () => Object.assign(hv, { patient: null, entry: null, q: '' });
+
+const ICONS = {
+  folder: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.5 6.2A1.7 1.7 0 0 1 4.2 4.5h5.1l2.1 2.1h8.4a1.7 1.7 0 0 1 1.7 1.7v9.5a1.7 1.7 0 0 1-1.7 1.7H4.2a1.7 1.7 0 0 1-1.7-1.7z"/></svg>',
+  file: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.2 2.5h7.6l5 5v12.3a1.7 1.7 0 0 1-1.7 1.7H6.2a1.7 1.7 0 0 1-1.7-1.7V4.2a1.7 1.7 0 0 1 1.7-1.7z"/><path fill="#fff" opacity=".55" d="M13.8 2.5v5h5zM8 12h8v1.4H8zm0 3h8v1.4H8zm0 3h5v1.4H8z"/></svg>',
+  grid: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>',
+  list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16v2.5H4zm0 5.75h16v2.5H4zM4 16.5h16V19H4z"/></svg>',
+};
+const icon = (name, cls = '') => {
+  const s = h('span', { class: `ico ico-${name} ${cls}` });
+  s.innerHTML = ICONS[name];
+  return s;
+};
 
 const medsOf = (r) => (r.data.doc.meds || []).filter((m) => medText(m));
-const initials = (name) =>
-  (name || '?')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('') || '?';
-const countLabel = (n) => `${n} ordonnance${n > 1 ? 's' : ''}`;
+const countLabel = (n) => t(`${n} ordonnance${n > 1 ? 's' : ''}`);
+const fileName = (r) => t('Ordonnance du') + ' ' + entryDate(r);
+const sortDate = (r) => {
+  const m = (r.data.date || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  return m ? new Date(+m[3], m[2] - 1, +m[1]).getTime() : r.data.at;
+};
 
 // Ré-impression à l'identique (même date, mêmes lignes) : n'ajoute rien à l'historique.
 async function reprint(r) {
@@ -230,8 +245,40 @@ async function reprint(r) {
   await printPages(layout, settings, pages, { copies });
 }
 
+// Petit aperçu de la première page, comme une vignette de fichier.
+function thumbnail(r) {
+  const layout = store.layout();
+  const settings = store.settings();
+  const { pages } = splitPages({ ...docOf(r), split: true }, layout);
+  const { el } = renderPage(layout, settings, pages[0], { scan: store.scan(), scanOpacity: settings.scanOpacity });
+  const box = h('div', { class: 'thumb' });
+  box.append(scaled(el, layout).el);
+  if (pages.length > 1) box.append(h('span', { class: 'thumb-badge' }, `${pages.length} ×`));
+  return box;
+}
+
+function menu(items) {
+  const m = h('details', { class: 'menu', onclick: (e) => e.stopPropagation() }, h('summary', { title: 'Autres actions', 'aria-label': 'Autres actions' }, '⋯'));
+  m.append(
+    h(
+      'div',
+      { class: 'menu-list' },
+      items.filter(Boolean).map(([label, fn, cls]) => h('button', { type: 'button', class: cls || '', onclick: (e) => (e.stopPropagation(), (m.open = false), fn()) }, label))
+    )
+  );
+  return m;
+}
+
+// Élément cliquable (dossier ou fichier), ouvrable au clavier.
+const item = (cls, open, ...kids) =>
+  h('div', { class: cls, tabIndex: 0, role: 'button', onclick: open, onkeydown: (e) => e.key === 'Enter' && e.target === e.currentTarget && open() }, ...kids);
+
 export function historyView(nav) {
-  const root = h('div', { class: 'view' });
+  const root = h('div', { class: 'view drive' });
+  const go = (patient, entry = null) => {
+    Object.assign(hv, { patient, entry });
+    paint();
+  };
 
   const openEditor = (r, renew) => {
     const doc = structuredClone(docOf(r));
@@ -245,78 +292,173 @@ export function historyView(nav) {
     nav.pendingPatient = patientValues(p);
     nav.go('presets');
   };
-  const del = async (r) => {
+  const delEntry = async (r) => {
     if (!(await confirmBox('Supprimer', 'Supprimer cette ordonnance de l’historique ?', 'Supprimer', true))) return;
     await store.remove(r.id);
     hv.entry = null;
     paint();
   };
+  const delPatient = async (p) => {
+    if (!(await confirmBox('Supprimer le dossier', `Supprimer le dossier « ${p.name || t('(sans nom)')} » et ses ${p.entries.length} ordonnance(s) ?`, 'Supprimer', true))) return;
+    for (const r of p.entries) await store.remove(r.id);
+    go(null);
+  };
+  const fileMenu = (r) =>
+    menu([
+      ['Ouvrir', () => go(hv.patient || keyOf(r), r.id)],
+      ['🖨 Ré-imprimer', () => reprint(r)],
+      ['↻ Renouveler', () => openEditor(r, true)],
+      ['✎ Modifier', () => openEditor(r, false)],
+      ['Supprimer', () => delEntry(r), 'danger-text'],
+    ]);
+  const folderMenu = (p) =>
+    menu([
+      ['Ouvrir', () => go(p.key)],
+      p.name ? ['＋ Nouvelle ordonnance', () => newFor(p)] : null,
+      ['Supprimer le dossier', () => delPatient(p), 'danger-text'],
+    ]);
+  let keyOf = () => null;
+  let nameOf = (r) => r.data.patient;
 
-  // --- 1. Liste des patients ---
-  function patientList() {
-    const list = h('div', { class: 'rows' });
-    const fill = () => {
-      const found = searchPatients(hv.q);
-      const noName = hv.q.trim() ? [] : patients().filter((p) => !p.name);
-      const shown = [...found, ...noName];
-      list.replaceChildren(
-        ...shown.slice(0, 200).map((p) =>
-          h(
-            'button',
-            { type: 'button', class: 'row prow', onclick: () => ((hv.patient = p.key), paint()) },
-            h('span', { class: 'avatar', dir: 'auto' }, p.name ? initials(p.name) : '?'),
+  // --- Barre : fil d'Ariane, recherche, tri, affichage ---
+  function bar(crumbs, { search, actions } = {}) {
+    const trail = h('nav', { class: 'crumbs', 'aria-label': 'Emplacement' });
+    crumbs.forEach(([label, fn], i) => {
+      if (i) trail.append(h('span', { class: 'sep' }, '›'));
+      trail.append(fn ? h('button', { type: 'button', class: 'crumb', dir: 'auto', onclick: fn }, label) : h('span', { class: 'crumb current', dir: 'auto' }, label));
+    });
+    const tools = h('div', { class: 'drive-tools' });
+    if (search) tools.append(search);
+    if (!hv.entry) {
+      tools.append(
+        h(
+          'select',
+          { class: 'input sort', 'aria-label': 'Trier', onchange: (e) => ((hv.sort = e.target.value), paint()) },
+          [['recent', 'Plus récents'], ['old', 'Plus anciens'], ['name', 'Nom (A → Z)']].map(([v, l]) => h('option', { value: v, selected: hv.sort === v }, l))
+        ),
+        h(
+          'div',
+          { class: 'seg' },
+          ['grid', 'list'].map((v) =>
             h(
-              'span',
-              { class: 'grow' },
-              h('span', { class: 'row-title', dir: 'auto' }, p.name || '(sans nom)'),
-              h('span', { class: 'row-sub' }, [p.birthDate, p.insurance].filter(Boolean).join(' · ') || ' ')
-            ),
-            h('span', { class: 'row-meta' }, h('b', null, countLabel(p.entries.length)), h('span', null, entryDate(p.entries[0]))),
-            h('span', { class: 'chev' }, '›')
+              'button',
+              {
+                type: 'button',
+                class: 'seg-btn' + (hv.view === v ? ' on' : ''),
+                title: v === 'grid' ? 'Grille' : 'Liste',
+                'aria-pressed': String(hv.view === v),
+                onclick: () => {
+                  hv.view = v;
+                  try {
+                    localStorage.setItem(VIEW_KEY, v);
+                  } catch {}
+                  paint();
+                },
+              },
+              icon(v)
+            )
           )
         )
       );
-      if (!shown.length) list.append(h('p', { class: 'empty' }, hv.q.trim() ? 'Aucun patient ne correspond.' : 'Les ordonnances imprimées apparaîtront ici, classées par patient.'));
-      else if (shown.length > 200) list.append(h('p', { class: 'hint' }, 'Affinez la recherche pour voir les autres patients.'));
-    };
-    const search = h('input', { class: 'input search', type: 'search', dir: 'auto', placeholder: 'Rechercher un patient…', value: hv.q, oninput: () => ((hv.q = search.value), fill()) });
-    fill();
-    return [h('div', { class: 'toolbar' }, h('h2', null, 'Patients'), search), list];
+    }
+    if (actions) tools.append(...[actions].flat());
+    return h('div', { class: 'drive-bar' }, trail, tools);
   }
 
-  // --- 2. Fiche d'un patient : ses ordonnances ---
-  function patientPage(p) {
-    const cards = p.entries.map((r) => {
-      const meds = medsOf(r);
-      return h(
-        'button',
-        { type: 'button', class: 'hcard', onclick: () => ((hv.entry = r.id), paint()) },
-        h('span', { class: 'hcard-head' }, h('b', null, entryDate(r)), h('span', { class: 'tag' }, r.data.presetName || 'Ordonnance vierge')),
-        h(
-          'span',
-          { class: 'hcard-meds' },
-          meds.slice(0, 4).map((m) => h('span', { class: 'hmed', dir: 'auto' }, m.ns ? h('i', { class: 'ns-tag' }, 'NS') : null, medText(m))),
-          meds.length > 4 ? h('span', { class: 'hint' }, `+ ${meds.length - 4}`) : null,
-          meds.length ? null : h('span', { class: 'hint' }, 'Aucun médicament')
-        ),
-        h('span', { class: 'use' }, 'Voir →')
+  // --- Dossier patient (vignette ou ligne) ---
+  function folder(p) {
+    const open = () => go(p.key);
+    if (hv.view === 'list')
+      return item(
+        'drow',
+        open,
+        icon('folder', 'c-folder'),
+        h('span', { class: 'dname', dir: 'auto' }, p.name || '(sans nom)'),
+        h('span', { class: 'dcol' }, p.birthDate || '—'),
+        h('span', { class: 'dcol hide-sm' }, p.insurance || '—'),
+        h('span', { class: 'dcol' }, countLabel(p.entries.length)),
+        h('span', { class: 'dcol hide-sm' }, entryDate(p.entries[0])),
+        folderMenu(p)
       );
-    });
+    return item(
+      'tile folder-tile',
+      open,
+      h('div', { class: 'tile-top' }, icon('folder', 'c-folder big'), folderMenu(p)),
+      h('div', { class: 'tile-name', dir: 'auto' }, p.name || '(sans nom)'),
+      h('div', { class: 'tile-sub' }, countLabel(p.entries.length)),
+      h('div', { class: 'tile-sub' }, t('Dernière :') + ' ' + entryDate(p.entries[0]))
+    );
+  }
+
+  // --- Fichier ordonnance (vignette ou ligne) ---
+  function file(r, showPatient) {
+    const open = () => go(keyOf(r), r.id);
+    const meds = medsOf(r);
+    const label = showPatient ? nameOf(r) || t('(sans nom)') : hv.view === 'list' ? fileName(r) : entryDate(r);
+    if (hv.view === 'list' && !showPatient)
+      return item(
+        'drow',
+        open,
+        icon('file', 'c-file'),
+        h('span', { class: 'dname' }, label),
+        h('span', { class: 'dcol hide-sm' }, r.data.presetName || 'Ordonnance vierge'),
+        h('span', { class: 'dcol wide', dir: 'auto' }, meds.length ? medText(meds[0]) + (meds.length > 1 ? `  +${meds.length - 1}` : '') : '—'),
+        h('span', { class: 'dcol hide-sm' }, fmtDateTime(r.data.at)),
+        fileMenu(r)
+      );
+    return item(
+      'tile file-tile',
+      open,
+      thumbnail(r),
+      h('div', { class: 'tile-row' }, icon('file', 'c-file'), h('div', { class: 'tile-name', dir: 'auto' }, label), fileMenu(r)),
+      h('div', { class: 'tile-sub' }, showPatient ? entryDate(r) : r.data.presetName || 'Ordonnance vierge')
+    );
+  }
+
+  const listHead = (cols) => h('div', { class: 'drow head' }, h('span', { class: 'ico' }), cols.map(([l, c]) => h('span', { class: c }, l)), h('span', { class: 'menu-space' }));
+
+  // --- 1. Racine : récents + dossiers patients ---
+  function rootPage(all) {
+    const search = h('input', { class: 'input search', type: 'search', dir: 'auto', placeholder: 'Rechercher un patient…', value: hv.q, oninput: () => ((hv.q = search.value), fillBody()) });
+    const body = h('div');
+    const fillBody = () => {
+      let folders = hv.q.trim() ? searchPatients(hv.q) : all;
+      if (hv.sort === 'name') folders = [...folders].sort((a, b) => (a.name || '￿').localeCompare(b.name || '￿', 'fr'));
+      else if (hv.sort === 'old') folders = [...folders].sort((a, b) => a.last - b.last);
+      const recent = hv.q.trim() ? [] : all.flatMap((p) => p.entries).sort((a, b) => b.data.at - a.data.at).slice(0, 6);
+      body.replaceChildren(
+        recent.length ? h('h3', { class: 'drive-h' }, 'Récents') : null,
+        recent.length ? h('div', { class: 'tiles files' }, recent.map((r) => file(r, true))) : null,
+        h('h3', { class: 'drive-h' }, 'Patients'),
+        folders.length
+          ? hv.view === 'list'
+            ? h('div', { class: 'dlist' }, listHead([['Nom', 'dname'], ['Date de naissance', 'dcol'], ["L'assurance", 'dcol hide-sm'], ['Ordonnances', 'dcol'], ['Dernière', 'dcol hide-sm']]), folders.slice(0, 300).map(folder))
+            : h('div', { class: 'tiles' }, folders.slice(0, 300).map(folder))
+          : h('p', { class: 'empty' }, hv.q.trim() ? 'Aucun patient ne correspond.' : 'Les ordonnances imprimées apparaîtront ici, rangées dans un dossier par patient.')
+      );
+    };
+    fillBody();
+    return [bar([['Historique', null]], { search }), body];
+  }
+
+  // --- 2. Dossier d'un patient ---
+  function folderPage(p) {
+    let files = [...p.entries];
+    if (hv.sort === 'old') files.sort((a, b) => sortDate(a) - sortDate(b));
+    else files.sort((a, b) => sortDate(b) - sortDate(a) || b.data.at - a.data.at);
     return [
-      h(
-        'div',
-        { class: 'ed-head' },
-        h('button', { type: 'button', class: 'btn', onclick: () => ((hv.patient = null), paint()) }, '← Patients'),
-        h('span', { class: 'avatar big', dir: 'auto' }, initials(p.name)),
-        h('div', { class: 'grow' }, h('h2', { class: 'ed-title', dir: 'auto' }, p.name || '(sans nom)'), h('div', { class: 'row-sub' }, [p.birthDate && t('Né(e) le') + ' ' + p.birthDate, p.insurance, countLabel(p.entries.length)].filter(Boolean).join(' · '))),
-        p.name ? h('button', { type: 'button', class: 'btn primary big', onclick: () => newFor(p) }, '＋ Nouvelle ordonnance') : null
-      ),
-      h('div', { class: 'hgrid' }, cards),
+      bar([['Historique', () => go(null)], [p.name || t('(sans nom)'), null]], {
+        actions: p.name ? h('button', { type: 'button', class: 'btn primary', onclick: () => newFor(p) }, '＋ Nouvelle ordonnance') : null,
+      }),
+      h('div', { class: 'folder-info' }, icon('folder', 'c-folder'), h('span', null, [p.birthDate && t('Né(e) le') + ' ' + p.birthDate, p.insurance, countLabel(p.entries.length)].filter(Boolean).join(' · '))),
+      hv.view === 'list'
+        ? h('div', { class: 'dlist' }, listHead([['Nom', 'dname'], ['Modèle', 'dcol hide-sm'], ['Médicaments', 'dcol wide'], ['Imprimée le', 'dcol hide-sm']]), files.map((r) => file(r, false)))
+        : h('div', { class: 'tiles files' }, files.map((r) => file(r, false))),
     ];
   }
 
-  // --- 3. Une ordonnance : aperçu, modifier, renouveler, ré-imprimer ---
-  function entryPage(p, r) {
+  // --- 3. Fichier ouvert : aperçu et actions ---
+  function filePage(p, r) {
     const layout = store.layout();
     const settings = store.settings();
     const { pages } = splitPages({ ...docOf(r), split: true }, layout);
@@ -330,19 +472,16 @@ export function historyView(nav) {
     };
     show();
     const v = docOf(r).values;
-    const fields = layout.fields.filter((f) => f.kind === 'text' && !f.from && !['patientName'].includes(f.id) && (v[f.id] || '').trim());
+    const fields = layout.fields.filter((f) => f.kind === 'text' && !f.from && !['patientName', 'birthDate', 'date'].includes(f.id) && (v[f.id] || '').trim());
     const meds = medsOf(r);
     return [
-      h(
-        'div',
-        { class: 'ed-head' },
-        h('button', { type: 'button', class: 'btn', onclick: () => ((hv.entry = null), paint()) }, '← ' + (p.name || t('(sans nom)'))),
-        h('h2', { class: 'ed-title' }, t('Ordonnance du') + ' ' + entryDate(r)),
-        h('div', { class: 'spacer' }),
-        h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, false), title: 'Ouvrir cette ordonnance pour la corriger, puis l’imprimer' }, '✎ Modifier'),
-        h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, true), title: 'Même ordonnance, datée d’aujourd’hui' }, '↻ Renouveler'),
-        h('button', { type: 'button', class: 'btn primary big', onclick: () => reprint(r), title: 'Imprimer exactement la même ordonnance' }, '🖨 Ré-imprimer')
-      ),
+      bar([['Historique', () => go(null)], [p.name || t('(sans nom)'), () => go(p.key)], [fileName(r), null]], {
+        actions: [
+          h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, false), title: 'Ouvrir cette ordonnance pour la corriger, puis l’imprimer' }, '✎ Modifier'),
+          h('button', { type: 'button', class: 'btn', onclick: () => openEditor(r, true), title: 'Même ordonnance, datée d’aujourd’hui' }, '↻ Renouveler'),
+          h('button', { type: 'button', class: 'btn primary', onclick: () => reprint(r), title: 'Imprimer exactement la même ordonnance' }, '🖨 Ré-imprimer'),
+        ],
+      }),
       h(
         'div',
         { class: 'ed-cols' },
@@ -357,7 +496,7 @@ export function historyView(nav) {
               h('dt', null, 'Nom et prénom du patient'), h('dd', { dir: 'auto' }, r.data.patient || '—'),
               v.birthDate ? [h('dt', null, 'Date de naissance'), h('dd', null, v.birthDate)] : null,
               v.date ? [h('dt', null, 'Date'), h('dd', null, v.date)] : null,
-              fields.filter((f) => f.id !== 'birthDate' && f.id !== 'date').map((f) => [h('dt', null, f.label), h('dd', { dir: 'auto' }, v[f.id])]),
+              fields.map((f) => [h('dt', null, f.label), h('dd', { dir: 'auto' }, v[f.id])]),
             ])
           ),
           h(
@@ -371,7 +510,7 @@ export function historyView(nav) {
             { class: 'hint' },
             t('Imprimée le') + ' ' + fmtDateTime(r.data.at) + (r.data.presetName ? ' · ' + t('Modèle') + ' : ' + r.data.presetName : ''),
             ' · ',
-            h('button', { type: 'button', class: 'link danger-text', onclick: () => del(r) }, 'Supprimer de l’historique')
+            h('button', { type: 'button', class: 'link danger-text', onclick: () => delEntry(r) }, 'Supprimer de l’historique')
           )
         ),
         h('div', { class: 'ed-preview' }, h('div', { class: 'preview-sticky' }, tabs, host))
@@ -380,11 +519,16 @@ export function historyView(nav) {
   }
 
   function paint() {
-    const p = hv.patient ? findPatient(hv.patient) : null;
+    const all = patients();
+    const owner = new Map(all.flatMap((p) => p.entries.map((r) => [r.id, p.key])));
+    keyOf = (r) => owner.get(r.id) || null;
+    const names = new Map(all.map((p) => [p.key, p.name]));
+    nameOf = (r) => names.get(keyOf(r)) || r.data.patient;
+    const p = hv.patient ? all.find((x) => x.key === hv.patient) : null;
     if (!p) Object.assign(hv, { patient: null, entry: null });
     const r = p && hv.entry ? p.entries.find((e) => e.id === hv.entry) : null;
     if (!r) hv.entry = null;
-    root.replaceChildren(...(r ? entryPage(p, r) : p ? patientPage(p) : patientList()).flat());
+    root.replaceChildren(...(r ? filePage(p, r) : p ? folderPage(p) : rootPage(all)).flat().filter(Boolean));
     scrollTo(0, 0);
   }
   paint();
