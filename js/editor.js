@@ -330,6 +330,12 @@ export function createEditor(opts) {
         doc: cleanDoc(doc, false),
       });
     await printPages(layout, settings, pages, { copies });
+    // Retour à l'accueil, avec confirmation que l'ordonnance est dans l'historique.
+    const who = (doc.values.patientName || '').trim();
+    const msg = opts.historyId
+      ? who ? `✔ Ordonnance de ${who} mise à jour dans l’historique.` : '✔ Ordonnance mise à jour dans l’historique.'
+      : who ? `✔ Ordonnance de ${who} enregistrée dans l’historique.` : '✔ Ordonnance enregistrée dans l’historique.';
+    opts.onPrinted?.(msg);
   }
 
   // « Modifier » depuis l'historique : met à jour l'ordonnance existante au lieu d'en ajouter une.

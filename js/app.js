@@ -28,7 +28,16 @@ const nav = {
     render();
   },
   openEditor(opts) {
-    editorOpts = { ...opts, onBack: () => ((editor = null), nav.go(opts.backTo || 'presets')) };
+    editorOpts = {
+      ...opts,
+      onBack: () => ((editor = null), nav.go(opts.backTo || 'presets')),
+      onPrinted: (msg) => {
+        editor = null;
+        resetHistory();
+        nav.go('presets');
+        toast(msg, 'success');
+      },
+    };
     editor = createEditor(editorOpts);
     nav.go('presets');
   },

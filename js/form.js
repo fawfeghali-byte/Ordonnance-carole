@@ -136,9 +136,28 @@ export function printPages(layout, settings, pages, { test = false, copies = 1 }
   for (const p of pages)
     for (let c = 0; c < copies; c++) root.append(renderPage(layout, settings, p, { guides: test, sample: test }).el);
   return new Promise((resolve) => {
-    const done = () => (removeEventListener('afterprint', done), root.replaceChildren(), resolve());
+    let finished = false;
+    const mq = matchMedia('print');
+    const onMq = (e) => !e.matches && done();
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      removeEventListener('afterprint', done);
+      mq.removeEventListener?.('change', onMq);
+      root.replaceChildren();
+      resolve();
+    };
+    // Fin d'impression : « afterprint », ou la sortie du mode impression selon le navigateur.
     addEventListener('afterprint', done);
+    mq.addEventListener?.('change', onMq);
     // Laisse le navigateur mettre en page avant d'ouvrir la boîte d'impression.
-    requestAnimationFrame(() => setTimeout(() => window.print(), 50));
+    requestAnimationFrame(() =>
+      setTimeout(() => {
+        const t0 = Date.now();
+        window.print();
+        // Sur ordinateur, print() attend la fermeture de la fenêtre d'impression.
+        if (Date.now() - t0 > 400) setTimeout(done, 0);
+      }, 50)
+    );
   });
 }

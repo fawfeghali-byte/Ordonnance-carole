@@ -107,6 +107,8 @@ const EN = {
   '— Sans dossier —': '— No folder —',
 
   // Historique
+  '✔ Ordonnance enregistrée dans l’historique.': '✔ Prescription saved in the history.',
+  '✔ Ordonnance mise à jour dans l’historique.': '✔ Prescription updated in the history.',
   '✔ Enregistrer': '✔ Save',
   'Ordonnance mise à jour.': 'Prescription updated.',
   'Met à jour cette ordonnance dans l’historique, sans l’imprimer': 'Updates this prescription in the history, without printing it',
@@ -384,6 +386,8 @@ const PATTERNS = [
   [/^Ré-impression — (.*)$/, (m) => 'Re-print — ' + t(m[1])],
   [/^Supprimer le dossier « (.*) » et ses (\d+) ordonnance\(s\) \?$/, (m) => `Delete the folder “${m[1]}” and its ${m[2]} prescription(s)?`],
   [/^Ordonnance du (.+)$/, (m) => 'Prescription of ' + m[1]],
+  [/^✔ Ordonnance de (.+) enregistrée dans l’historique\.$/, (m) => `✔ ${m[1]}’s prescription was saved in the history.`],
+  [/^✔ Ordonnance de (.+) mise à jour dans l’historique\.$/, (m) => `✔ ${m[1]}’s prescription was updated in the history.`],
   [/^Renouvellement — (.*)$/, (m) => 'Renewal — ' + t(m[1])],
   [/^Modification — (.*)$/, (m) => 'Editing — ' + t(m[1])],
   [/^(\d+) ordonnances?$/, (m) => `${m[1]} prescription${m[1] === '1' ? '' : 's'}`],

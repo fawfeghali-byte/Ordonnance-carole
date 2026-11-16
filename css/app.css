@@ -483,6 +483,8 @@ main > * { animation: rise var(--t-slow) var(--ease-out); }
 #toasts { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: center; width: max-content; max-width: calc(100vw - 24px); }
 .toast { background: rgba(15, 42, 47, 0.94); color: #fff; padding: 12px 18px; border-radius: 14px; box-shadow: var(--shadow-3); font-weight: 550; animation: toast-in 360ms var(--ease-spring); }
 .toast.error { background: var(--danger); }
+.toast.success { background: linear-gradient(135deg, #0f8aa6, var(--accent-2)); display: flex; align-items: center; gap: 10px; }
+.toast.success .i { width: 22px; height: 22px; padding: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); animation: pop 420ms var(--ease-spring) 120ms backwards; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px) scale(0.95); } }
 
 /* ---------- Moins de mouvement ---------- */

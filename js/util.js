@@ -73,7 +73,7 @@ export function toast(msg, kind = '') {
   if (!box) document.body.append((box = h('div', { id: 'toasts' })));
   const t = h('div', { class: 'toast ' + kind, role: 'status' }, msg);
   box.append(t);
-  setTimeout(() => t.remove(), kind === 'error' ? 6000 : 3000);
+  setTimeout(() => t.remove(), kind === 'error' ? 6000 : kind === 'success' ? 4500 : 3000);
 }
 
 // Boîte de dialogue générique. Renvoie la valeur du bouton choisi (ou null si fermée).
