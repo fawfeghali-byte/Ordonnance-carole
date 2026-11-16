@@ -1,5 +1,6 @@
 // Écran de saisie d'une ordonnance (ou d'un modèle) avec aperçu en direct.
-import { h, today, dateMask, toast, confirmBox, promptBox, dialog } from './util.js';
+import { h, norm, today, dateMask, toast, confirmBox, promptBox, dialog } from './util.js';
+import { t } from './i18n.js';
 import * as store from './store.js';
 import { renderPage, scaled, splitPages, printPages, medText } from './form.js';
 import { autocomplete, drugLabel, bgBadge } from './drugs.js';
@@ -157,6 +158,7 @@ export function createEditor(opts) {
       Object.assign(m, { drug: drugLabel(d), bg: d.bg || '' });
       if (d.mine) Object.assign(m, { dose: d.dose || m.dose, freq: d.freq || m.freq, duration: d.duration || m.duration });
       drug.value = m.drug;
+      paintStar(star, m);
       dose.value = m.dose;
       freq.value = m.freq;
       duration.value = m.duration;
@@ -179,6 +181,9 @@ export function createEditor(opts) {
       renderMeds();
       touch();
     };
+    const star = h('button', { type: 'button', class: 'icon star-btn', onclick: () => toggleMyDrug(m, star) }, '★');
+    paintStar(star, m);
+    drug.addEventListener('input', () => paintStar(star, m));
     const row = h(
       'div',
       { class: 'med' + (m.ns ? ' is-ns' : '') },
@@ -195,7 +200,7 @@ export function createEditor(opts) {
       h(
         'div',
         { class: 'med-tools' },
-        h('button', { type: 'button', class: 'icon', title: 'Ajouter à mes médicaments', onclick: () => saveMyDrug(m) }, '★'),
+        star,
         h('button', { type: 'button', class: 'icon', title: 'Monter', onclick: () => move(-1) }, '↑'),
         h('button', { type: 'button', class: 'icon', title: 'Descendre', onclick: () => move(1) }, '↓'),
         h('button', { type: 'button', class: 'icon', title: 'Supprimer la ligne', onclick: del }, '✕')
@@ -208,10 +213,28 @@ export function createEditor(opts) {
     medRows.replaceChildren(...doc.meds.map(medRow));
   }
 
-  async function saveMyDrug(m) {
+  // ★ : ajoute le médicament à « Mes médicaments », ou l'en retire s'il y est déjà.
+  const findMyDrug = (m) => {
+    const key = norm(m.drug).trim();
+    return key ? store.all('mydrug').find((r) => norm(r.data.name).trim() === key) : null;
+  };
+  function paintStar(btn, m) {
+    const on = !!findMyDrug(m);
+    btn.classList.toggle('on', on);
+    btn.title = t(on ? 'Retirer de mes médicaments' : 'Ajouter à mes médicaments');
+    btn.setAttribute('aria-pressed', String(on));
+  }
+  async function toggleMyDrug(m, btn) {
     if (!m.drug.trim()) return toast('Saisissez d’abord le médicament.');
-    await store.put('mydrug', { name: m.drug.trim(), strength: '', form: '', bg: m.bg || '', dose: m.dose, freq: m.freq, duration: m.duration });
-    toast('Ajouté à « Mes médicaments » avec sa posologie.');
+    const existing = findMyDrug(m);
+    if (existing) {
+      for (const r of store.all('mydrug').filter((r) => norm(r.data.name).trim() === norm(m.drug).trim())) await store.remove(r.id);
+      toast('Retiré de « Mes médicaments ».');
+    } else {
+      await store.put('mydrug', { name: m.drug.trim(), strength: '', form: '', bg: m.bg || '', dose: m.dose, freq: m.freq, duration: m.duration });
+      toast('Ajouté à « Mes médicaments » avec sa posologie.');
+    }
+    paintStar(btn, m);
   }
 
   // ----- Actions -----

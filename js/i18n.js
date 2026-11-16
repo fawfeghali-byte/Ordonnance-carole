@@ -242,6 +242,8 @@ const EN = {
   'Supprimer la ligne': 'Delete line',
   'Saisissez d’abord le médicament.': 'Type the medication first.',
   'Ajouté à « Mes médicaments » avec sa posologie.': 'Added to “My medications” with its dosage.',
+  'Retiré de « Mes médicaments ».': 'Removed from “My medications”.',
+  'Retirer de mes médicaments': 'Remove from my medications',
   'Nouveau modèle': 'New template',
   'Nom du modèle': 'Template name',
   'Le nom et la date de naissance du patient ne sont pas enregistrés dans le modèle.': 'The patient’s name and date of birth are not saved in the template.',
